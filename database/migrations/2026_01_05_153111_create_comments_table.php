@@ -1,0 +1,38 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('comments', function (Blueprint $table) {
+            $table->id();
+            $table->morphs('commentable'); // task, project, etc.
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->foreignId('parent_id')->nullable()->constrained('comments')->onDelete('cascade'); // For threading
+            $table->longText('content'); // Rich text HTML
+            $table->json('edit_history')->nullable(); // Store original content for edit history
+            $table->timestamp('edited_at')->nullable();
+            $table->softDeletes();
+            $table->timestamps();
+            
+            // morphs() already creates index for commentable_type and commentable_id
+            $table->index('user_id');
+            $table->index('parent_id');
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('comments');
+    }
+};
