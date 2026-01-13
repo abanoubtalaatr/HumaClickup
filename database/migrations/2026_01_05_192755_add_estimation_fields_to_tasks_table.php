@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('tasks', function (Blueprint $table) {
-            $table->integer('estimated_minutes')->nullable()->after('time_estimate')->comment('Final/average estimated time in minutes');
+            $table->integer('estimated_minutes')->nullable()->after('estimated_time')->comment('Final/average estimated time in minutes');
             $table->enum('estimation_status', ['pending', 'polling', 'completed'])->default('pending')->after('estimated_minutes')->comment('Status of estimation polling');
             $table->timestamp('estimation_completed_at')->nullable()->after('estimation_status');
             $table->foreignId('estimation_edited_by')->nullable()->after('estimation_completed_at')->constrained('users')->onDelete('set null')->comment('Member who edited the estimation');
