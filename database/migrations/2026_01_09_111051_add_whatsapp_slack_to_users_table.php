@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->string('whatsapp_number')->nullable()->after('phone');
+            $table->string('whatsapp_number')->nullable()->after('email');
             $table->string('slack_channel_link')->nullable()->after('whatsapp_number');
         });
     }
