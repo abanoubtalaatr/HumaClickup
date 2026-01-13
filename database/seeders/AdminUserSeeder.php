@@ -24,7 +24,7 @@ class AdminUserSeeder extends Seeder
             ['email' => 'admin@humaclickup.com'],
             [
                 'name' => 'Admin User',
-                'password' => bcrypt('password'),
+                'password' => bcrypt('Master@#12HumaClickup'),
                 'email_verified_at' => now(),
                 'status' => 'active',
                 'timezone' => 'UTC',
@@ -32,7 +32,7 @@ class AdminUserSeeder extends Seeder
             ]
         );
 
-        $this->command->info("✅ Admin user created: admin@humaclickup.com / password");
+        $this->command->info("✅ Admin user created: admin@humaclickup.com / Master@#12HumaClickup");
 
         // Create Workspace
         $workspace = Workspace::firstOrCreate(
