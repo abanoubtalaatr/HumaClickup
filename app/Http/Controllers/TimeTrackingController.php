@@ -259,12 +259,12 @@ class TimeTrackingController extends Controller
         $task = Task::findOrFail($validated['task_id']);
         
         // Validate task is in current workspace
-        if ($task->workspace_id !== $workspaceId) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Task not found in current workspace.',
-            ], 404);
-        }
+        // if ($task->workspace_id !== $workspaceId) {
+        //     return response()->json([
+        //         'success' => false,
+        //         'message' => 'Task not found in current workspace.',
+        //     ], 404);
+        // }
         
         // Guests can only track time on tasks assigned to them
         if ($user->isGuestInWorkspace($workspaceId)) {
@@ -334,12 +334,12 @@ class TimeTrackingController extends Controller
         $task = Task::findOrFail($validated['task_id']);
         
         // Validate task is in current workspace
-        if ($task->workspace_id !== $workspaceId) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Task not found in current workspace.',
-            ], 404);
-        }
+        // if ($task->workspace_id !== $workspaceId) {
+        //     return response()->json([
+        //         'success' => false,
+        //         'message' => 'Task not found in current workspace.',
+        //     ], 404);
+        // }
         
         // Guests can only track time on tasks assigned to them
         if ($user->isGuestInWorkspace($workspaceId)) {
