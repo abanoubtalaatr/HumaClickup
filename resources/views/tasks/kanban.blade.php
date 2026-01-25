@@ -22,13 +22,7 @@
                         </svg>
                         Kanban
                     </a>
-                    <a href="{{ $project ? route('projects.tasks.index', $project) : route('tasks.list') }}" 
-                       class="inline-flex items-center px-4 py-2 text-sm font-medium rounded-r-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
-                        </svg>
-                        List
-                    </a>
+                    
                 </div>
                 
                 <button @click="showFilters = !showFilters" 
@@ -38,7 +32,7 @@
                     </svg>
                     Filters
                 </button>
-                @if(!($isGuest ?? false))
+                @if(!($isGuest ?? false) || $tester)
                 <button @click="openCreateModal()" 
                         class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">
                     <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -57,8 +51,9 @@
                 <label class="text-sm font-medium text-gray-700">Project:</label>
                 <select onchange="window.location.href='{{ route('tasks.kanban') }}?project_id=' + this.value" 
                         class="block w-64 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        <option value="">All Projects</option>
                     @foreach($projects as $proj)
-                        <option value="{{ $proj->id }}" {{ (request('project_id') == $proj->id || (!request('project_id') && $loop->first)) ? 'selected' : '' }}>
+                        <option value="{{ $proj->id }}" {{ (request('project_id') == $proj->id ) ? 'selected' : '' }}>
                             {{ $proj->name }}
                         </option>
                     @endforeach

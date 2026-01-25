@@ -17,18 +17,20 @@ class TaskController extends Controller
 
     public function index(Request $request, ?Project $project = null)
     {
+        
         // Default to Kanban view
         return $this->kanban($request, $project);
     }
 
     public function list(Request $request, ?Project $project = null)
     {
+        
         $workspaceId = session('current_workspace_id');
         $user = auth()->user();
         $isGuest = $user->isGuestInWorkspace($workspaceId);
-        
+        $tester = $user->hasTestingTrackInWorkspace($workspaceId);
         // Get all projects for filter based on user role
-        if ($isGuest) {
+        if ($isGuest && !$tester) {
             $allProjects = Project::where('workspace_id', $workspaceId)
                 ->whereHas('tasks', function ($query) use ($user) {
                     $query->whereHas('assignees', fn($q) => $q->where('user_id', $user->id));
@@ -58,7 +60,7 @@ class TaskController extends Controller
                 $project = $allProjects->first();
             }
         } else {
-            $this->authorize('view', $project);
+            // $this->authorize('view', $project);
         }
         
         $query = Task::where('workspace_id', $workspaceId);
@@ -106,9 +108,11 @@ class TaskController extends Controller
 
     public function kanban(Request $request, ?Project $project = null)
     {
+        
         $workspaceId = session('current_workspace_id');
         $user = auth()->user();
-        $isGuest = $user->isGuestInWorkspace($workspaceId);
+        $isGuest = $user->isGuestInWorkspace($workspaceId) ;
+        $tester = $user->hasTestingTrackInWorkspace($workspaceId);
         
         // Get all projects for filter dropdown based on user role
         if($isGuest && $user->hasTestingTrackInWorkspace($workspaceId)){
@@ -138,24 +142,31 @@ class TaskController extends Controller
                 ->get();
         }
         
+        
         if ($project) {
-            $this->authorize('view', $project);
+            
+            // $this->authorize('view', $project);
             $statuses = $project->customStatuses()->orderBy('order')->get();
+            
         } else {
             // If no project specified, check if there's a project_id in request or use first project
             $selectedProjectId = $request->get('project_id');
+            
             if ($selectedProjectId) {
                 $project = Project::where('workspace_id', $workspaceId)->find($selectedProjectId);
             } else {
-                $project = $allProjects->first();
+                $project = null;
             }
             
             if ($project) {
+                
                 $statuses = $project->customStatuses()->orderBy('order')->get();
             } else {
                 $statuses = collect();
+                
             }
         }
+        
 
         // Load tasks for each status
         foreach ($statuses as $status) {
@@ -165,6 +176,7 @@ class TaskController extends Controller
             // Apply project filter
             if ($request->filled('project_id')) {
                 $taskQuery->where('project_id', $request->project_id);
+                
             } elseif ($project) {
                 $taskQuery->where('project_id', $project->id);
             }
@@ -185,7 +197,7 @@ class TaskController extends Controller
             }
             
             // Guests can only see tasks assigned to them
-            if ($isGuest) {
+            if ($isGuest && !$tester) {
                 $taskQuery->whereHas('assignees', fn($q) => $q->where('user_id', $user->id));
             }
             
@@ -209,7 +221,7 @@ class TaskController extends Controller
             ->orderBy('start_date', 'desc')
             ->get();
 
-        return view('tasks.kanban', compact('statuses', 'project', 'projects', 'assignees', 'tags', 'users', 'sprints', 'isGuest'));
+        return view('tasks.kanban', compact('statuses', 'project', 'projects', 'assignees', 'tags', 'users', 'sprints', 'isGuest','tester'));
     }
 
     /**
@@ -300,6 +312,7 @@ class TaskController extends Controller
     {
         $workspaceId = session('current_workspace_id');
         $user = auth()->user();
+        
         
         $validated = $request->validate([
             'title' => 'required|string|max:255',
