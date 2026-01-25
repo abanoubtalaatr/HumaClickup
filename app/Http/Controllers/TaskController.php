@@ -66,8 +66,13 @@ class TaskController extends Controller
         // Apply filters
         if ($request->filled('project_id')) {
             $query->where('project_id', $request->project_id);
-        } elseif ($project) {
+        } elseif ($project && !$user->hasTestingTrackInWorkspace($workspaceId)) {
+            // Only filter by project if not testing track (testing track sees all tasks)
             $query->where('project_id', $project->id);
+        }
+        
+        if ($request->filled('sprint_id')) {
+            $query->where('sprint_id', $request->sprint_id);
         }
         
         if ($request->filled('status_id')) {
@@ -83,6 +88,7 @@ class TaskController extends Controller
         }
 
         // Guests can only see tasks assigned to them
+        // Testing track users can see all tasks
         if ($isGuest) {
             $query->whereHas('assignees', fn($q) => $q->where('user_id', $user->id));
         }
@@ -140,12 +146,22 @@ class TaskController extends Controller
             $selectedProjectId = $request->get('project_id');
             if ($selectedProjectId) {
                 $project = Project::where('workspace_id', $workspaceId)->find($selectedProjectId);
-            } else {
+            } elseif (!$user->hasTestingTrackInWorkspace($workspaceId)) {
+                // Only use first project if not testing track (testing track sees all tasks)
                 $project = $allProjects->first();
             }
             
             if ($project) {
                 $statuses = $project->customStatuses()->orderBy('order')->get();
+            } elseif ($user->hasTestingTrackInWorkspace($workspaceId)) {
+                // For testing track, get all unique statuses from all projects
+                $statuses = CustomStatus::whereHas('project', function ($q) use ($workspaceId) {
+                    $q->where('workspace_id', $workspaceId)->where('is_archived', false);
+                })
+                ->orderBy('order')
+                ->get()
+                ->unique('name')
+                ->values();
             } else {
                 $statuses = collect();
             }
@@ -157,9 +173,11 @@ class TaskController extends Controller
                 ->where('workspace_id', $workspaceId);
             
             // Apply project filter
+            // Testing track users see all tasks unless explicitly filtered
             if ($request->filled('project_id')) {
                 $taskQuery->where('project_id', $request->project_id);
-            } elseif ($project) {
+            } elseif ($project && !$user->hasTestingTrackInWorkspace($workspaceId)) {
+                // Only filter by project if not testing track
                 $taskQuery->where('project_id', $project->id);
             }
             
