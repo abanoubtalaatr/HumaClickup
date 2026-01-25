@@ -28,7 +28,13 @@ class TaskController extends Controller
         $isGuest = $user->isGuestInWorkspace($workspaceId);
         
         // Get all projects for filter based on user role
-        if ($isGuest) {
+        if ($isGuest && $user->hasTestingTrackInWorkspace($workspaceId)) {
+            // Testing track guests can see all projects
+            $allProjects = Project::where('workspace_id', $workspaceId)
+                ->where('is_archived', false)
+                ->get();
+        } elseif ($isGuest) {
+            // Regular guests can only see projects with tasks assigned to them
             $allProjects = Project::where('workspace_id', $workspaceId)
                 ->whereHas('tasks', function ($query) use ($user) {
                     $query->whereHas('assignees', fn($q) => $q->where('user_id', $user->id));
@@ -54,7 +60,8 @@ class TaskController extends Controller
             $selectedProjectId = $request->get('project_id');
             if ($selectedProjectId) {
                 $project = Project::where('workspace_id', $workspaceId)->find($selectedProjectId);
-            } else {
+            } elseif (!($isGuest && $user->hasTestingTrackInWorkspace($workspaceId))) {
+                // Only use first project if not testing track guest (testing track guests see all tasks)
                 $project = $allProjects->first();
             }
         } else {
@@ -66,7 +73,8 @@ class TaskController extends Controller
         // Apply filters
         if ($request->filled('project_id')) {
             $query->where('project_id', $request->project_id);
-        } elseif ($project) {
+        } elseif ($project && !($isGuest && $user->hasTestingTrackInWorkspace($workspaceId))) {
+            // Only filter by project if not testing track guest (testing track guests see all tasks)
             $query->where('project_id', $project->id);
         }
         
@@ -82,8 +90,8 @@ class TaskController extends Controller
             $query->where('priority', $request->priority);
         }
 
-        // Guests can only see tasks assigned to them
-        if ($isGuest) {
+        // Guests can only see tasks assigned to them, unless they have testing track
+        if ($isGuest && !$user->hasTestingTrackInWorkspace($workspaceId)) {
             $query->whereHas('assignees', fn($q) => $q->where('user_id', $user->id));
         }
 
@@ -111,13 +119,13 @@ class TaskController extends Controller
         $isGuest = $user->isGuestInWorkspace($workspaceId);
         
         // Get all projects for filter dropdown based on user role
-        if($isGuest && $user->hasTestingTrackInWorkspace($workspaceId)){
+        if ($isGuest && $user->hasTestingTrackInWorkspace($workspaceId)) {
+            // Testing track guests can see all projects
             $allProjects = Project::where('workspace_id', $workspaceId)
-            ->where('is_archived', false)
-            ->get();
-            dd($allProjects);
-        }
-        elseif ($isGuest ) {
+                ->where('is_archived', false)
+                ->get();
+        } elseif ($isGuest) {
+            // Regular guests can only see projects with tasks assigned to them
             $allProjects = Project::where('workspace_id', $workspaceId)
                 ->whereHas('tasks', function ($query) use ($user) {
                     $query->whereHas('assignees', fn($q) => $q->where('user_id', $user->id));
@@ -146,12 +154,22 @@ class TaskController extends Controller
             $selectedProjectId = $request->get('project_id');
             if ($selectedProjectId) {
                 $project = Project::where('workspace_id', $workspaceId)->find($selectedProjectId);
-            } else {
+            } elseif (!($isGuest && $user->hasTestingTrackInWorkspace($workspaceId))) {
+                // Only use first project if not testing track guest
                 $project = $allProjects->first();
             }
             
             if ($project) {
                 $statuses = $project->customStatuses()->orderBy('order')->get();
+            } elseif ($isGuest && $user->hasTestingTrackInWorkspace($workspaceId)) {
+                // For testing track guests, get all unique statuses from all projects
+                $statuses = CustomStatus::whereHas('project', function ($q) use ($workspaceId) {
+                    $q->where('workspace_id', $workspaceId)->where('is_archived', false);
+                })
+                ->orderBy('order')
+                ->get()
+                ->unique('name')
+                ->values();
             } else {
                 $statuses = collect();
             }
@@ -163,9 +181,11 @@ class TaskController extends Controller
                 ->where('workspace_id', $workspaceId);
             
             // Apply project filter
+            // Testing track guests see all tasks unless explicitly filtered
             if ($request->filled('project_id')) {
                 $taskQuery->where('project_id', $request->project_id);
-            } elseif ($project) {
+            } elseif ($project && !($isGuest && $user->hasTestingTrackInWorkspace($workspaceId))) {
+                // Only filter by project if not testing track guest
                 $taskQuery->where('project_id', $project->id);
             }
             
@@ -184,8 +204,8 @@ class TaskController extends Controller
                 $taskQuery->where('priority', $request->priority);
             }
             
-            // Guests can only see tasks assigned to them
-            if ($isGuest) {
+            // Guests can only see tasks assigned to them, unless they have testing track
+            if ($isGuest && !$user->hasTestingTrackInWorkspace($workspaceId)) {
                 $taskQuery->whereHas('assignees', fn($q) => $q->where('user_id', $user->id));
             }
             
