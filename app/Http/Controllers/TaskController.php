@@ -115,6 +115,7 @@ class TaskController extends Controller
             $allProjects = Project::where('workspace_id', $workspaceId)
             ->where('is_archived', false)
             ->get();
+            dd($allProjects);
         }
         elseif ($isGuest ) {
             $allProjects = Project::where('workspace_id', $workspaceId)
