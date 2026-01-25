@@ -149,12 +149,8 @@
                                                class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded mr-4"
                                                onclick="event.preventDefault();">
                                         <div>
-                                            <p class="text-sm font-medium text-gray-900">
-                                                {{ $task->title }}
-                                                @if($task->project)
-                                                    <span class="text-xs text-gray-500 font-normal ml-2">({{ $task->project->name }})</span>
-                                                @endif
-                                            </p>
+                                            <p class="text-sm font-medium text-gray-900">{{ $task->title }}</p>
+                                            <p class="mt-1 text-sm text-gray-500">{{ $task->project->name ?? 'No Project' }}</p>
                                         </div>
                                     </div>
                                     <div class="flex items-center space-x-4">

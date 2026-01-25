@@ -2,12 +2,7 @@
    class="block bg-white rounded-lg shadow p-4 cursor-pointer hover:shadow-md transition-shadow" 
    data-task-id="{{ $task->id }}">
     <!-- Task Title -->
-    <h4 class="text-sm font-medium text-gray-900 mb-2">
-        {{ $task->title }}
-        @if($task->project)
-            <span class="text-xs text-gray-500 font-normal ml-2">({{ $task->project->name }})</span>
-        @endif
-    </h4>
+    <h4 class="text-sm font-medium text-gray-900 mb-2">{{ $task->title }}</h4>
     
     <!-- Task Meta -->
     <div class="flex items-center justify-between text-xs text-gray-500 mb-3">
