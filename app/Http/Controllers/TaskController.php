@@ -111,7 +111,12 @@ class TaskController extends Controller
         $isGuest = $user->isGuestInWorkspace($workspaceId);
         
         // Get all projects for filter dropdown based on user role
-        if ($isGuest && !$user->hasTestingTrackInWorkspace($workspaceId)) {
+        if($isGuest && $user->hasTestingTrackInWorkspace($workspaceId)){
+            $allProjects = Project::where('workspace_id', $workspaceId)
+            ->where('is_archived', false)
+            ->get();
+        }
+        elseif ($isGuest ) {
             $allProjects = Project::where('workspace_id', $workspaceId)
                 ->whereHas('tasks', function ($query) use ($user) {
                     $query->whereHas('assignees', fn($q) => $q->where('user_id', $user->id));
