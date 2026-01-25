@@ -265,7 +265,7 @@ class Task extends Model
         return $this->assignees()
             ->whereHas('workspaces', function ($q) use ($workspaceId) {
                 $q->where('workspaces.id', $workspaceId)
-                  ->wherePivot('role', 'guest');
+                  ->where('workspace_user.role', 'guest');
             })
             ->get();
     }
