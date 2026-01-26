@@ -311,11 +311,10 @@
                             <!-- Description -->
                             <div>
                                 <label for="task_description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                                <textarea id="task_description" 
-                                          x-model="newTask.description"
-                                          rows="3"
-                                          placeholder="Add a description..."
-                                          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"></textarea>
+                                <div id="task_description" 
+                                     class="bg-white border border-gray-300 rounded-md shadow-sm focus-within:ring-indigo-500 focus-within:border-indigo-500"
+                                     style="min-height: 150px;">
+                                </div>
                             </div>
 
                             <div class="grid grid-cols-2 gap-4">
@@ -485,6 +484,40 @@ function kanbanBoard() {
                 related_task_id: ''
             };
             this.showCreateModal = true;
+            
+            // Initialize Quill editor when modal opens
+            this.$nextTick(() => {
+                if (typeof Quill !== 'undefined') {
+                    // Remove existing instance if any
+                    const existingEditor = document.querySelector('#task_description .ql-container');
+                    if (existingEditor) {
+                        const editorContainer = document.getElementById('task_description');
+                        editorContainer.innerHTML = '';
+                    }
+                    
+                    // Initialize Quill
+                    const quill = new Quill('#task_description', {
+                        theme: 'snow',
+                        modules: {
+                            toolbar: [
+                                [{ 'header': [1, 2, 3, false] }],
+                                ['bold', 'italic', 'underline', 'strike'],
+                                [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                                [{ 'color': [] }, { 'background': [] }],
+                                [{ 'align': [] }],
+                                ['link', 'image'],
+                                ['clean']
+                            ]
+                        },
+                        placeholder: 'Add a description...',
+                    });
+                    
+                    // Update newTask.description when content changes
+                    quill.on('text-change', () => {
+                        this.newTask.description = quill.root.innerHTML;
+                    });
+                }
+            });
         },
         
         updateTaskType() {
@@ -498,10 +531,19 @@ function kanbanBoard() {
             this.isLoading = true;
             
             try {
+                // Get content from Quill editor if it exists
+                let description = '';
+                const quillEditor = document.querySelector('#task_description .ql-editor');
+                if (quillEditor) {
+                    description = quillEditor.innerHTML;
+                } else {
+                    description = this.newTask.description || '';
+                }
+                
                 const formData = new FormData();
                 formData.append('type', this.newTask.type || 'task');
                 formData.append('title', this.newTask.title);
-                formData.append('description', this.newTask.description || '');
+                formData.append('description', description);
                 formData.append('status_id', this.newTask.status_id);
                 formData.append('priority', this.newTask.priority);
                 if (this.newTask.related_task_id) {
@@ -529,6 +571,11 @@ function kanbanBoard() {
                 const data = await response.json();
                 
                 if (response.ok && data.success) {
+                    // Clear Quill editor before closing
+                    const quillEditor = document.querySelector('#task_description .ql-editor');
+                    if (quillEditor) {
+                        quillEditor.innerHTML = '';
+                    }
                     this.showCreateModal = false;
                     // Reload page to show new task
                     window.location.reload();

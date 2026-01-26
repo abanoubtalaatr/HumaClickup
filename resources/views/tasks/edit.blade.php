@@ -77,10 +77,15 @@
                     <label for="description" class="block text-sm font-medium text-gray-700 mb-2">
                         Description
                     </label>
-                    <textarea id="description" 
-                              name="description" 
-                              rows="6"
-                              class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">{{ old('description', $task->description) }}</textarea>
+                    <!-- Hidden textarea for form submission -->
+                    <textarea name="description" 
+                              style="display: none;">{{ old('description', $task->description) }}</textarea>
+                    <!-- Quill editor container -->
+                    <div id="description" 
+                         class="bg-white border border-gray-300 rounded-md shadow-sm focus-within:ring-indigo-500 focus-within:border-indigo-500"
+                         style="min-height: 200px;">
+                        {!! old('description', $task->description) !!}
+                    </div>
                     @error('description')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
@@ -309,6 +314,39 @@ function taskEditForm() {
         isBug: false,
         
         init() {
+            // Initialize Quill editor for description
+            if (typeof Quill !== 'undefined') {
+                const quill = new Quill('#description', {
+                    theme: 'snow',
+                    modules: {
+                        toolbar: [
+                            [{ 'header': [1, 2, 3, false] }],
+                            ['bold', 'italic', 'underline', 'strike'],
+                            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                            [{ 'color': [] }, { 'background': [] }],
+                            [{ 'align': [] }],
+                            ['link', 'image'],
+                            ['clean']
+                        ]
+                    },
+                    placeholder: 'Add details about this task...',
+                });
+                
+                // Update hidden input when content changes
+                quill.on('text-change', () => {
+                    const descriptionInput = document.querySelector('textarea[name="description"]');
+                    if (descriptionInput) {
+                        descriptionInput.value = quill.root.innerHTML;
+                    }
+                });
+                
+                // Set initial content if exists
+                const descriptionInput = document.querySelector('textarea[name="description"]');
+                if (descriptionInput && descriptionInput.value) {
+                    quill.root.innerHTML = descriptionInput.value;
+                }
+            }
+            
             // Initialize selected assignees
             document.querySelectorAll('input[name="assignee_ids[]"]:checked').forEach(checkbox => {
                 this.selectedAssignees.push(checkbox.value);
@@ -346,6 +384,7 @@ function taskEditForm() {
         }
     }
 }
+
 </script>
 @endpush
 @endsection

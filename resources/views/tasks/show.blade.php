@@ -38,7 +38,7 @@
                 <!-- Description -->
                 <div class="bg-white shadow rounded-lg p-6">
                     <h2 class="text-lg font-medium text-gray-900 mb-4">Description</h2>
-                    <div class="prose max-w-none">
+                    <div class="prose max-w-none prose-sm">
                         {!! $task->description ?: '<p class="text-gray-500 italic">No description provided.</p>' !!}
                     </div>
                 </div>
