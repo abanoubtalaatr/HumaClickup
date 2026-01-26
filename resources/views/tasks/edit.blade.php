@@ -15,6 +15,47 @@
                 @csrf
                 @method('PUT')
 
+                <!-- Task Type -->
+                <div class="mb-4">
+                    <label for="type" class="block text-sm font-medium text-gray-700 mb-2">
+                        Type <span class="text-red-500">*</span>
+                    </label>
+                    <select id="type" 
+                            name="type" 
+                            required
+                            x-on:change="updateFormType()"
+                            class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="task" {{ old('type', $task->type ?? 'task') == 'task' ? 'selected' : '' }}>Task</option>
+                        <option value="bug" {{ old('type', $task->type ?? 'task') == 'bug' ? 'selected' : '' }}>Bug</option>
+                    </select>
+                    @error('type')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <!-- Related Task (only for bugs) -->
+                <div class="mb-4" x-show="isBug" x-cloak>
+                    <label for="related_task_id" class="block text-sm font-medium text-gray-700 mb-2">
+                        Related Task (Optional)
+                    </label>
+                    <select id="related_task_id" 
+                            name="related_task_id" 
+                            class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="">No related task</option>
+                        @if(isset($tasks) && $tasks->count() > 0)
+                            @foreach($tasks as $relatedTask)
+                                <option value="{{ $relatedTask->id }}" {{ old('related_task_id', $task->related_task_id) == $relatedTask->id ? 'selected' : '' }}>
+                                    {{ $relatedTask->title }}
+                                </option>
+                            @endforeach
+                        @endif
+                    </select>
+                    <p class="mt-1 text-xs text-gray-500">Link this bug to a specific task</p>
+                    @error('related_task_id')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
                 <!-- Task Title -->
                 <div class="mb-4">
                     <label for="title" class="block text-sm font-medium text-gray-700 mb-2">
@@ -265,6 +306,7 @@ function taskEditForm() {
     return {
         selectedAssignees: [],
         selectedTags: [],
+        isBug: false,
         
         init() {
             // Initialize selected assignees
@@ -276,6 +318,19 @@ function taskEditForm() {
             document.querySelectorAll('input[name="tag_ids[]"]:checked').forEach(checkbox => {
                 this.selectedTags.push(checkbox.value);
             });
+            
+            // Initialize type
+            const typeSelect = document.getElementById('type');
+            if (typeSelect) {
+                this.isBug = typeSelect.value === 'bug';
+            }
+        },
+        
+        updateFormType() {
+            const typeSelect = document.getElementById('type');
+            if (typeSelect) {
+                this.isBug = typeSelect.value === 'bug';
+            }
         },
         
         updateSelectedAssignees() {

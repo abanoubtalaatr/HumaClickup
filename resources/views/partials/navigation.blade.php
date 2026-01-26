@@ -25,6 +25,10 @@
                                class="{{ request()->routeIs('tasks.*') ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                                 Tasks
                             </a>
+                            <a href="{{ route('bugs.index') }}" 
+                               class="{{ request()->routeIs('bugs.*') ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                Bugs
+                            </a>
                             <a href="{{ route('sprints.index', ['workspace' => session('current_workspace_id')]) }}" 
                                class="{{ request()->routeIs('sprints.*') ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                                 Sprints

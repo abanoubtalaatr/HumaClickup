@@ -2,7 +2,19 @@
    class="block bg-white rounded-lg shadow p-4 cursor-pointer hover:shadow-md transition-shadow" 
    data-task-id="{{ $task->id }}">
     <!-- Task Title -->
-    <h4 class="text-sm font-medium text-gray-900 mb-2">{{ $task->title }}</h4>
+    <div class="flex items-center space-x-2 mb-2">
+        <h4 class="text-sm font-medium text-gray-900">{{ $task->title }}</h4>
+        @if($task->type === 'bug')
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
+                Bug
+            </span>
+        @endif
+        @if($task->relatedTask)
+            <span class="text-xs text-gray-500" title="Related to: {{ $task->relatedTask->title }}">
+                🔗
+            </span>
+        @endif
+    </div>
     
     <!-- Task Meta -->
     <div class="flex items-center justify-between text-xs text-gray-500 mb-3">

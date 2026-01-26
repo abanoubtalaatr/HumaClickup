@@ -236,6 +236,9 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('/tasks/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
         Route::post('/tasks/{task}/status', [TaskController::class, 'updateStatus'])->name('tasks.updateStatus');
         
+        // Bugs routes
+        Route::get('/bugs', [TaskController::class, 'bugs'])->name('bugs.index');
+        
         // API endpoint for getting assignable users (used in task creation)
         Route::get('/api/assignable-users', [TaskController::class, 'getAssignableUsers'])->name('api.assignable-users');
         

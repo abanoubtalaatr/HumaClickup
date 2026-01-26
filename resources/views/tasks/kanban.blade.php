@@ -71,7 +71,7 @@
              x-transition
              class="mb-6 bg-white p-4 rounded-lg shadow">
             <form method="GET" action="{{ $project ? route('projects.tasks.kanban', $project) : route('tasks.kanban') }}">
-                <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
+                <div class="grid grid-cols-1 md:grid-cols-6 gap-4 mb-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Project</label>
                         <select name="project_id" class="block w-full border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500">
@@ -124,6 +124,14 @@
                             <option value="high" {{ request('priority') == 'high' ? 'selected' : '' }}>High</option>
                             <option value="normal" {{ request('priority') == 'normal' ? 'selected' : '' }}>Normal</option>
                             <option value="low" {{ request('priority') == 'low' ? 'selected' : '' }}>Low</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Type</label>
+                        <select name="type" class="block w-full border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="">All Types</option>
+                            <option value="task" {{ request('type') == 'task' ? 'selected' : '' }}>Tasks</option>
+                            <option value="bug" {{ request('type') == 'bug' ? 'selected' : '' }}>Bugs</option>
                         </select>
                     </div>
                 </div>
@@ -237,7 +245,7 @@
                     <!-- Modal Header -->
                     <div class="bg-white px-4 py-4 border-b border-gray-200">
                         <div class="flex items-center justify-between">
-                            <h3 class="text-lg font-semibold text-gray-900">Create New Task</h3>
+                            <h3 class="text-lg font-semibold text-gray-900" x-text="newTask.type === 'bug' ? 'Create New Bug' : 'Create New Task'"></h3>
                             <button @click="showCreateModal = false" class="text-gray-400 hover:text-gray-500">
                                 <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -249,13 +257,53 @@
                     <!-- Modal Body -->
                     <form @submit.prevent="createTask" class="bg-white px-6 py-4">
                         <div class="space-y-4">
+                            <!-- Task Type - Prominent Field -->
+                            <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                <label for="task_type" class="block text-sm font-medium text-gray-700 mb-2">
+                                    <span class="flex items-center">
+                                        <svg class="w-4 h-4 mr-1 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                                        </svg>
+                                        Type <span class="text-red-500">*</span>
+                                    </span>
+                                </label>
+                                <select id="task_type" 
+                                        name="type"
+                                        x-model="newTask.type"
+                                        x-on:change="updateTaskType()"
+                                        required
+                                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-white sm:text-sm">
+                                    <option value="task">Task</option>
+                                    <option value="bug">Bug</option>
+                                </select>
+                                <p class="mt-1 text-xs text-gray-500">Choose whether this is a regular task or a bug report</p>
+                            </div>
+
+                            <!-- Related Task (only for bugs) -->
+                            <div x-show="newTask.type === 'bug'" x-cloak>
+                                <label for="task_related_task" class="block text-sm font-medium text-gray-700 mb-1">Related Task (Optional)</label>
+                                <select id="task_related_task" 
+                                        x-model="newTask.related_task_id"
+                                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                    <option value="">No related task</option>
+                                    @if(isset($tasks) && $tasks->count() > 0)
+                                        @foreach($tasks as $task)
+                                            <option value="{{ $task->id }}">{{ $task->title }}</option>
+                                        @endforeach
+                                    @endif
+                                </select>
+                                <p class="mt-1 text-xs text-gray-500">Link this bug to a specific task</p>
+                            </div>
+
                             <!-- Task Title -->
                             <div>
-                                <label for="task_title" class="block text-sm font-medium text-gray-700 mb-1">Task Title *</label>
+                                <label for="task_title" class="block text-sm font-medium text-gray-700 mb-1">
+                                    <span x-text="newTask.type === 'bug' ? 'Bug Title' : 'Task Title'"></span> *
+                                </label>
                                 <input type="text" 
                                        id="task_title" 
                                        x-model="newTask.title"
-                                       placeholder="Enter task title..."
+                                       x-bind:placeholder="newTask.type === 'bug' ? 'Describe the bug...' : 'Enter task title...'"
                                        required
                                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                             </div>
@@ -293,10 +341,17 @@
                                     <select id="task_status" 
                                             x-model="newTask.status_id"
                                             class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                                        @foreach($statuses ?? [] as $status)
-                                            <option value="{{ $status->id }}" {{ $status->is_default ? 'selected' : '' }}>{{ $status->name }}</option>
-                                        @endforeach
+                                        @if(isset($statuses) && $statuses->count() > 0)
+                                            @foreach($statuses as $status)
+                                                <option value="{{ $status->id }}" {{ $status->is_default ? 'selected' : '' }}>{{ $status->name }}</option>
+                                            @endforeach
+                                        @else
+                                            <option value="">No statuses available</option>
+                                        @endif
                                     </select>
+                                    @if(!isset($statuses) || $statuses->count() == 0)
+                                        <p class="mt-1 text-xs text-red-600">Please select a project first to see available statuses</p>
+                                    @endif
                                 </div>
 
                                 <!-- Priority -->
@@ -377,7 +432,7 @@
                             <button type="submit"
                                     :disabled="isLoading || !newTask.title"
                                     class="inline-flex justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed">
-                                <span x-show="!isLoading">Create Task</span>
+                                <span x-show="!isLoading" x-text="newTask.type === 'bug' ? 'Create Bug' : 'Create Task'"></span>
                                 <span x-show="isLoading" class="flex items-center">
                                     <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
                                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -402,6 +457,7 @@ function kanbanBoard() {
         showCreateModal: false,
         isLoading: false,
         newTask: {
+            type: 'task',
             title: '',
             description: '',
             project_id: '{{ $project->id ?? '' }}',
@@ -410,12 +466,14 @@ function kanbanBoard() {
             due_date: '',
             sprint_id: '',
             assignee_id: '',
-            estimated_time: ''
+            estimated_time: '',
+            related_task_id: ''
         },
         
         openCreateModal(statusId = null) {
             // Reset form
             this.newTask = {
+                type: 'task',
                 title: '',
                 description: '',
                 project_id: '{{ $project->id ?? '' }}',
@@ -423,9 +481,15 @@ function kanbanBoard() {
                 priority: 'normal',
                 due_date: '',
                 assignee_id: '',
-                estimated_time: ''
+                estimated_time: '',
+                related_task_id: ''
             };
             this.showCreateModal = true;
+        },
+        
+        updateTaskType() {
+            // This function can be used to update UI when type changes
+            // Currently handled by x-show directives
         },
         
         async createTask() {
@@ -435,10 +499,14 @@ function kanbanBoard() {
             
             try {
                 const formData = new FormData();
+                formData.append('type', this.newTask.type || 'task');
                 formData.append('title', this.newTask.title);
                 formData.append('description', this.newTask.description || '');
                 formData.append('status_id', this.newTask.status_id);
                 formData.append('priority', this.newTask.priority);
+                if (this.newTask.related_task_id) {
+                    formData.append('related_task_id', this.newTask.related_task_id);
+                }
                 if (this.newTask.due_date) formData.append('due_date', this.newTask.due_date);
                 if (this.newTask.sprint_id) formData.append('sprint_id', this.newTask.sprint_id);
                 if (this.newTask.assignee_id) formData.append('assignee_ids[]', this.newTask.assignee_id);

@@ -23,7 +23,9 @@ class Task extends Model
         'status_id',
         'creator_id',
         'parent_id',
+        'related_task_id',
         'title',
+        'type',
         'description',
         'priority',
         'due_date',
@@ -51,6 +53,7 @@ class Task extends Model
             'is_private' => 'boolean',
             'estimated_minutes' => 'integer',
             'estimation_completed_at' => 'datetime',
+            'type' => 'string',
         ];
     }
 
@@ -98,6 +101,16 @@ class Task extends Model
     public function parent(): BelongsTo
     {
         return $this->belongsTo(Task::class, 'parent_id');
+    }
+
+    public function relatedTask(): BelongsTo
+    {
+        return $this->belongsTo(Task::class, 'related_task_id');
+    }
+
+    public function bugs(): HasMany
+    {
+        return $this->hasMany(Task::class, 'related_task_id')->where('type', 'bug')->orderBy('position');
     }
 
     public function subtasks(): HasMany
@@ -189,6 +202,16 @@ class Task extends Model
         return $query->whereHas('blockedByTasks', function ($q) {
             $q->whereHas('status', fn($sq) => $sq->where('type', '!=', 'done'));
         });
+    }
+
+    public function scopeBugs(Builder $query): Builder
+    {
+        return $query->where('type', 'bug');
+    }
+
+    public function scopeTasks(Builder $query): Builder
+    {
+        return $query->where('type', 'task');
     }
 
     // Helper Methods

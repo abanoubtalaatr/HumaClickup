@@ -6,8 +6,8 @@
 <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8" x-data="taskCreateForm()">
     <div class="py-6">
         <div class="mb-6">
-            <h1 class="text-3xl font-bold text-gray-900">Create New Task</h1>
-            <p class="mt-1 text-sm text-gray-500">{{ $project ? "Add a task to {$project->name}" : 'Create a new task' }}</p>
+            <h1 class="text-3xl font-bold text-gray-900" x-text="isBug ? 'Create New Bug' : 'Create New Task'"></h1>
+            <p class="mt-1 text-sm text-gray-500" x-text="isBug ? '{{ $project ? "Report a bug in {$project->name}" : "Report a bug" }}' : '{{ $project ? "Add a task to {$project->name}" : "Create a new task" }}'"></p>
         </div>
 
         <div class="bg-white shadow rounded-lg">
@@ -39,17 +39,67 @@
                     <input type="hidden" name="project_id" value="{{ $project->id }}">
                 @endif
 
+                <!-- Task Type - Required Field -->
+                <div class="mb-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <label for="type" class="block text-sm font-medium text-gray-700 mb-2">
+                        <span class="flex items-center">
+                            <svg class="w-4 h-4 mr-1 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                            </svg>
+                            Type <span class="text-red-500">*</span>
+                        </span>
+                    </label>
+                    <select id="type" 
+                            name="type" 
+                            required
+                            x-on:change="updateFormType()"
+                            class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 bg-white">
+                        @php
+                            $defaultType = old('type', request('type', 'task'));
+                        @endphp
+                        <option value="task" {{ $defaultType == 'task' ? 'selected' : '' }}>Task</option>
+                        <option value="bug" {{ $defaultType == 'bug' ? 'selected' : '' }}>Bug</option>
+                    </select>
+                    <p class="mt-1 text-xs text-gray-500">Choose whether this is a regular task or a bug report</p>
+                    @error('type')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <!-- Related Task (only for bugs) -->
+                <div class="mb-4" x-show="isBug" x-cloak>
+                    <label for="related_task_id" class="block text-sm font-medium text-gray-700 mb-2">
+                        Related Task (Optional)
+                    </label>
+                    <select id="related_task_id" 
+                            name="related_task_id" 
+                            class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="">No related task</option>
+                        @if(isset($tasks) && $tasks->count() > 0)
+                            @foreach($tasks as $task)
+                                <option value="{{ $task->id }}" {{ old('related_task_id') == $task->id ? 'selected' : '' }}>
+                                    {{ $task->title }}
+                                </option>
+                            @endforeach
+                        @endif
+                    </select>
+                    <p class="mt-1 text-xs text-gray-500">Link this bug to a specific task</p>
+                    @error('related_task_id')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
                 <!-- Task Title -->
                 <div class="mb-4">
                     <label for="title" class="block text-sm font-medium text-gray-700 mb-2">
-                        Task Title <span class="text-red-500">*</span>
+                        <span x-text="isBug ? 'Bug Title' : 'Task Title'"></span> <span class="text-red-500">*</span>
                     </label>
                     <input type="text" 
                            id="title" 
                            name="title" 
                            value="{{ old('title') }}" 
                            required
-                           placeholder="What needs to be done?"
+                           x-bind:placeholder="isBug ? 'Describe the bug...' : 'What needs to be done?'"
                            class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
                     @error('title')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -278,7 +328,8 @@
                         Cancel
                     </a>
                     <button type="submit" 
-                            class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">
+                            class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
+                            x-text="isBug ? 'Create Bug' : 'Create Task'">
                         Create Task
                     </button>
                 </div>
@@ -293,6 +344,7 @@ function taskCreateForm() {
     return {
         selectedAssignees: [],
         selectedTags: [],
+        isBug: false,
         
         init() {
             // Initialize selected assignees from old input
@@ -304,6 +356,26 @@ function taskCreateForm() {
             document.querySelectorAll('input[name="tag_ids[]"]:checked').forEach(checkbox => {
                 this.selectedTags.push(checkbox.value);
             });
+            
+            // Initialize type - check if there's an old value or default to task
+            const typeSelect = document.getElementById('type');
+            if (typeSelect) {
+                // Check URL parameter for type
+                const urlParams = new URLSearchParams(window.location.search);
+                const typeParam = urlParams.get('type');
+                if (typeParam && (typeParam === 'task' || typeParam === 'bug')) {
+                    typeSelect.value = typeParam;
+                }
+                // Set isBug based on current selection
+                this.isBug = typeSelect.value === 'bug';
+            }
+        },
+        
+        updateFormType() {
+            const typeSelect = document.getElementById('type');
+            if (typeSelect) {
+                this.isBug = typeSelect.value === 'bug';
+            }
         },
         
         updateSelectedAssignees() {
