@@ -158,7 +158,13 @@
                                                onclick="event.preventDefault();">
                                         <div>
                                             <p class="text-sm font-medium text-gray-900">{{ $task->title }}</p>
-                                            <p class="mt-1 text-sm text-gray-500">{{ $task->project->name ?? 'No Project' }}</p>
+                                            <div class="mt-1 flex items-center space-x-2">
+                                                <p class="text-sm text-gray-500">{{ $task->project->name ?? 'No Project' }}</p>
+                                                @if($task->creator)
+                                                    <span class="text-xs text-gray-400">•</span>
+                                                    <p class="text-xs text-gray-500">Created by <span class="font-medium">{{ $task->creator->name }}</span></p>
+                                                @endif
+                                            </div>
                                         </div>
                                     </div>
                                     <div class="flex items-center space-x-4">

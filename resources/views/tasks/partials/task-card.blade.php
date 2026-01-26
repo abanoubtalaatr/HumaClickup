@@ -39,6 +39,14 @@
         </div>
     </div>
     
+    <!-- Creator -->
+    @if($task->creator)
+    <div class="flex items-center mb-2 text-xs text-gray-500">
+        <span class="text-gray-400 mr-1">Created by:</span>
+        <span class="font-medium text-gray-700">{{ $task->creator->name }}</span>
+    </div>
+    @endif
+    
     <!-- Task Footer -->
     <div class="flex items-center justify-between">
         <!-- Assignees with name and track -->

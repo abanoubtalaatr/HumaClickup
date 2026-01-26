@@ -91,6 +91,22 @@
 
             <!-- Sidebar -->
             <div class="lg:col-span-1 space-y-6">
+                <!-- Creator -->
+                @if($task->creator)
+                <div class="bg-white shadow rounded-lg p-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-3">Created By</label>
+                    <div class="flex items-center p-2 bg-gray-50 rounded-lg">
+                        <div class="h-10 w-10 rounded-full bg-indigo-500 flex items-center justify-center text-white text-sm mr-3 flex-shrink-0">
+                            {{ strtoupper(substr($task->creator->name, 0, 1)) }}
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-gray-900 truncate">{{ $task->creator->name }}</p>
+                            <p class="text-xs text-gray-500">{{ $task->created_at->format('M d, Y') }}</p>
+                        </div>
+                    </div>
+                </div>
+                @endif
+
                 <!-- Status -->
                 <div class="bg-white shadow rounded-lg p-6">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>

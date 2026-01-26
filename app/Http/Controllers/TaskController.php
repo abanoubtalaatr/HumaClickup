@@ -95,7 +95,7 @@ class TaskController extends Controller
             $query->whereHas('assignees', fn($q) => $q->where('user_id', $user->id));
         }
 
-        $tasks = $query->with(['assignees', 'status', 'tags', 'project', 'relatedTask'])
+        $tasks = $query->with(['assignees', 'status', 'tags', 'project', 'relatedTask', 'creator'])
             ->orderBy('position')
             ->get();
 
@@ -216,7 +216,7 @@ class TaskController extends Controller
             }
             
             $status->tasks = $taskQuery
-                ->with(['assignees', 'tags', 'relatedTask'])
+                ->with(['assignees', 'tags', 'relatedTask', 'creator'])
                 ->withCount(['comments', 'attachments', 'subtasks'])
                 ->orderBy('position')
                 ->get();
@@ -443,7 +443,7 @@ class TaskController extends Controller
         
         // $this->authorize('view', $task);
 
-        $task->load(['assignees', 'watchers', 'status', 'tags', 'comments.user', 'attachments', 'subtasks.status', 'project']);
+        $task->load(['assignees', 'watchers', 'status', 'tags', 'comments.user', 'attachments', 'subtasks.status', 'project', 'creator']);
 
         $statuses = $task->project->customStatuses;
         $users = $this->getAssignableUsersForCreation($workspaceId);
