@@ -11,6 +11,8 @@ use App\Http\Controllers\WorkspaceController;
 use App\Http\Controllers\TimeTrackingController;
 use App\Http\Controllers\TrackController;
 use App\Http\Controllers\TaskEstimationController;
+use App\Http\Controllers\TopicController;
+use App\Http\Controllers\DailyStatusController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -217,6 +219,22 @@ Route::middleware(['auth'])->group(function () {
                 ->firstOrFail();
         });
         
+        // Bind topic to workspace scope
+        Route::bind('topic', function ($value) {
+            $workspaceId = session('current_workspace_id');
+            return \App\Models\Topic::where('id', $value)
+                ->where('workspace_id', $workspaceId)
+                ->firstOrFail();
+        });
+        
+        // Bind daily_status to workspace scope
+        Route::bind('daily_status', function ($value) {
+            $workspaceId = session('current_workspace_id');
+            return \App\Models\DailyStatus::where('id', $value)
+                ->where('workspace_id', $workspaceId)
+                ->firstOrFail();
+        });
+        
         Route::get('/projects', [ProjectController::class, 'index'])->name('projects.index');
         Route::get('/projects/create', [ProjectController::class, 'create'])->name('projects.create');
         Route::post('/projects', [ProjectController::class, 'store'])->name('projects.store');
@@ -238,6 +256,13 @@ Route::middleware(['auth'])->group(function () {
         
         // Bugs routes
         Route::get('/bugs', [TaskController::class, 'bugs'])->name('bugs.index');
+        
+        // Topics routes
+        Route::resource('topics', TopicController::class);
+        Route::post('/topics/{topic}/toggle-complete', [TopicController::class, 'toggleComplete'])->name('topics.toggle-complete');
+        
+        // Daily Statuses routes
+        Route::resource('daily-statuses', DailyStatusController::class);
         
         // API endpoint for getting assignable users (used in task creation)
         Route::get('/api/assignable-users', [TaskController::class, 'getAssignableUsers'])->name('api.assignable-users');

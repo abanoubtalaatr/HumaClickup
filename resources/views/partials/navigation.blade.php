@@ -57,6 +57,14 @@
                                class="{{ request()->routeIs('reports.*') ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                                 Reports
                             </a>
+                            <a href="{{ route('topics.index') }}" 
+                               class="{{ request()->routeIs('topics.*') ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                Topics
+                            </a>
+                            <a href="{{ route('daily-statuses.index') }}" 
+                               class="{{ request()->routeIs('daily-statuses.*') ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                Status
+                            </a>
                             {{-- Attendance link hidden --}}
                             {{-- <a href="{{ route('attendance.index') }}" 
                                class="{{ request()->routeIs('attendance.*') ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
