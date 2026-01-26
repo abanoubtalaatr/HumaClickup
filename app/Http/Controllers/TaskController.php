@@ -331,7 +331,7 @@ class TaskController extends Controller
         ]);
 
         $project = $project ?? Project::find($validated['project_id']);
-        $this->authorize('create', [Task::class, $workspaceId, $project->id]);
+        // $this->authorize('create', [Task::class, $workspaceId, $project->id]);
 
         // Validate that assignees are valid for the current user
         if (!empty($validated['assignee_ids'])) {
