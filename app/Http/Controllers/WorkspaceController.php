@@ -207,15 +207,9 @@ class WorkspaceController extends Controller
             $canInviteExisting = true;
             $roles = ['admin', 'member', 'guest'];
             
-            // Get guests who are already in this workspace (for assignment modal)
-            $allGuests = $workspace->users()
-                ->wherePivot('role', 'guest')
-                ->withPivot(['role', 'track_id', 'created_by_user_id', 'attendance_days', 'absence_count', 'is_suspended'])
-                ->get();
-            
-            // For filter view: Get all users without any workspace + guests in this workspace
-            $guestsInWorkspace = $allGuests;
-            $usersWithoutWorkspace = User::doesntHave('workspaces')
+            // Separate all guests and all members for filtering
+            // Get all users directly from User model without any conditions, but exclude users who have any workspace
+            $allGuests = User::doesntHave('workspaces')
                 ->get()
                 ->map(function ($user) {
                     // Create a default pivot object to prevent null errors
@@ -230,9 +224,6 @@ class WorkspaceController extends Controller
                     return $user;
                 });
             
-            // Combine both for the filter view
-            $allGuestsForView = $guestsInWorkspace->merge($usersWithoutWorkspace);
-            
             $allMembers = $workspace->users()
                 ->wherePivotIn('role', ['owner', 'admin', 'member'])
                 ->withPivot(['role', 'track_id', 'created_by_user_id', 'attendance_days', 'absence_count', 'is_suspended'])
@@ -246,7 +237,7 @@ class WorkspaceController extends Controller
         // Check if admin
         $isAdmin = $user->isAdminInWorkspace($workspace->id);
 
-        return view('workspaces.members', compact('workspace', 'members', 'roles', 'tracks', 'canInviteExisting', 'isAdmin', 'allGuests', 'allGuestsForView', 'allMembers', 'filter'));
+        return view('workspaces.members', compact('workspace', 'members', 'roles', 'tracks', 'canInviteExisting', 'isAdmin', 'allGuests', 'allMembers', 'filter'));
     }
 
     /**
@@ -537,9 +528,9 @@ class WorkspaceController extends Controller
             ->whereIn('users.id', $guestIds)
             ->get();
 
-        if ($guests->count() !== count($guestIds)) {
-            return back()->with('error', 'Some selected guests are not valid.');
-        }
+        // if ($guests->count() !== count($guestIds)) {
+        //     return back()->with('error', 'Some selected guests are not valid.');
+        // }
 
         // Update created_by_user_id for each guest
         foreach ($guests as $guest) {

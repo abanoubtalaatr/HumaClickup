@@ -103,7 +103,7 @@
                     </a>
                     <a href="{{ route('workspaces.members', array_merge([$workspace], request()->except('filter'), ['filter' => 'guests'])) }}" 
                        class="px-4 py-2 rounded-md text-sm font-medium {{ ($filter ?? 'all') === 'guests' ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600' }}">
-                        All Guests ({{ ($allGuestsForView ?? $allGuests ?? collect())->count() }})
+                        All Guests ({{ $allGuests->count() ?? 0 }})
                     </a>
                     <a href="{{ route('workspaces.members', array_merge([$workspace], request()->except('filter'), ['filter' => 'members'])) }}" 
                        class="px-4 py-2 rounded-md text-sm font-medium {{ ($filter ?? 'all') === 'members' ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600' }}">
@@ -164,7 +164,7 @@
                 <div class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden mb-6">
                     <div class="px-4 py-4 sm:px-6 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
                         <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-lg font-medium text-gray-900 dark:text-white">All Guests ({{ ($allGuestsForView ?? $allGuests)->count() }})</h3>
+                            <h3 class="text-lg font-medium text-gray-900 dark:text-white">All Guests ({{ $allGuests->count() }})</h3>
                         </div>
                         <!-- Search Input -->
                         <div class="relative">
@@ -179,9 +179,9 @@
                                    class="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                         </div>
                     </div>
-                    @if(($allGuestsForView ?? $allGuests)->count() > 0)
+                    @if($allGuests->count() > 0)
                         <ul class="divide-y divide-gray-200 dark:divide-gray-700">
-                            @foreach(($allGuestsForView ?? $allGuests) as $guest)
+                            @foreach($allGuests as $guest)
                                 <li class="px-4 py-3 sm:px-6 hover:bg-gray-50 dark:hover:bg-gray-700/50"
                                     data-guest-name="{{ strtolower($guest->name) }}"
                                     data-guest-email="{{ strtolower($guest->email) }}"
