@@ -163,12 +163,29 @@
                 <!-- Show All Guests -->
                 <div class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden mb-6">
                     <div class="px-4 py-4 sm:px-6 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
-                        <h3 class="text-lg font-medium text-gray-900 dark:text-white">All Guests ({{ $allGuests->count() }})</h3>
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-medium text-gray-900 dark:text-white">All Guests ({{ $allGuests->count() }})</h3>
+                        </div>
+                        <!-- Search Input -->
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                </svg>
+                            </div>
+                            <input type="text" 
+                                   x-model="guestSearch" 
+                                   placeholder="Search guests by name or email..." 
+                                   class="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        </div>
                     </div>
                     @if($allGuests->count() > 0)
                         <ul class="divide-y divide-gray-200 dark:divide-gray-700">
                             @foreach($allGuests as $guest)
-                                <li class="px-4 py-3 sm:px-6 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                <li class="px-4 py-3 sm:px-6 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                                    data-guest-name="{{ strtolower($guest->name) }}"
+                                    data-guest-email="{{ strtolower($guest->email) }}"
+                                    x-show="!guestSearch || $el.dataset.guestName.includes(guestSearch.toLowerCase()) || $el.dataset.guestEmail.includes(guestSearch.toLowerCase())">
                                     <div class="flex items-center justify-between">
                                         <div class="flex items-center min-w-0 flex-1">
                                             <div class="h-8 w-8 rounded-full bg-gray-400 flex items-center justify-center text-white text-sm font-medium">
@@ -214,6 +231,12 @@
                             No guests found
                         </div>
                     @endif
+                    <!-- No results message when search filters everything out -->
+                    <div x-show="guestSearch && Array.from(document.querySelectorAll('li[data-guest-name]')).every(el => el.offsetParent === null)" 
+                         x-cloak
+                         class="px-4 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
+                        No guests match your search
+                    </div>
                 </div>
             @elseif(($filter ?? 'all') === 'members')
                 <!-- Show All Members -->
@@ -1059,6 +1082,7 @@ function membersManager() {
         showAssignModal: false,
         showEditModal: false,
         showRemoveModal: false,
+        guestSearch: '',
         newMemberRole: '{{ in_array("guest", $roles) ? "guest" : (in_array("member", $roles) ? "member" : "admin") }}',
         inviteRole: 'member',
         selectedMemberId: '',
