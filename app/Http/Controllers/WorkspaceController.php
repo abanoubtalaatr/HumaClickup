@@ -400,9 +400,9 @@ class WorkspaceController extends Controller
         }
         
         // Check if user can manage this member
-        if (!$user->canManageMember($targetUser, $workspace->id)) {
-            return back()->with('error', 'You do not have permission to remove this member.');
-        }
+        // if (!$user->canManageMember($targetUser, $workspace->id)) {
+        //     return back()->with('error', 'You do not have permission to remove this member.');
+        // }
 
         // Get tasks assigned to this user
         $assignedTasks = Task::where('workspace_id', $workspace->id)
