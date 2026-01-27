@@ -209,7 +209,27 @@ class WorkspaceController extends Controller
             
             // Separate all guests and all members for filtering
             // Get all users directly from User model without any conditions
-            $allGuests = User::all();
+            $allGuests = User::with(['workspaces' => function ($query) use ($workspace) {
+                $query->where('workspaces.id', $workspace->id)
+                      ->withPivot(['role', 'track_id', 'created_by_user_id', 'attendance_days', 'absence_count', 'is_suspended']);
+            }])->get()->map(function ($user) use ($workspace) {
+                // Attach pivot data if user belongs to this workspace
+                $workspaceRelation = $user->workspaces->first();
+                if ($workspaceRelation) {
+                    $user->pivot = $workspaceRelation->pivot;
+                } else {
+                    // Create a default pivot object to prevent null errors
+                    $user->pivot = (object) [
+                        'role' => null,
+                        'track_id' => null,
+                        'created_by_user_id' => null,
+                        'attendance_days' => null,
+                        'absence_count' => null,
+                        'is_suspended' => null,
+                    ];
+                }
+                return $user;
+            });
             
             $allMembers = $workspace->users()
                 ->wherePivotIn('role', ['owner', 'admin', 'member'])

@@ -189,7 +189,7 @@
                                                             {{ $guestTrack->name }}
                                                         </span>
                                                     @endif
-                                                    @if($guest->pivot->created_by_user_id)
+                                                    @if($guest->pivot && $guest->pivot->created_by_user_id)
                                                         @php
                                                             $creator = $workspace->users->find($guest->pivot->created_by_user_id);
                                                         @endphp
@@ -811,7 +811,7 @@
                                                     <div class="flex-1">
                                                         <span class="text-sm font-medium text-gray-900 dark:text-white">{{ $guest->name }}</span>
                                                         <span class="text-xs text-gray-500 dark:text-gray-400 ml-2">{{ $guest->email }}</span>
-                                                        @if($guest->pivot->created_by_user_id)
+                                                        @if($guest->pivot && $guest->pivot->created_by_user_id)
                                                             @php
                                                                 $creator = $workspace->users->find($guest->pivot->created_by_user_id);
                                                             @endphp
