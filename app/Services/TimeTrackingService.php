@@ -113,7 +113,8 @@ class TimeTrackingService
                 throw new \Exception('Time entry overlaps with existing entry.');
             }
 
-            $duration = $startTime->diffInSeconds($endTime);
+            // Calculate duration in seconds
+            $duration = abs($endTime->getTimestamp() - $startTime->getTimestamp());
 
             $timeEntry = TimeEntry::create([
                 'workspace_id' => $task->workspace_id,
@@ -147,7 +148,8 @@ class TimeTrackingService
     public function updateEntry(TimeEntry $timeEntry, array $data, User $user): TimeEntry
     {
         return DB::transaction(function () use ($timeEntry, $data, $user) {
-            // Only allow editing own entries or if admin
+            // Only allow editing own entries (guests and members can edit their own)
+            // Admins can edit any entry
             $role = $user->getRoleInWorkspace($timeEntry->workspace_id);
             if ($timeEntry->user_id !== $user->id && !in_array($role, ['owner', 'admin'])) {
                 throw new \Exception('You can only edit your own time entries.');
@@ -158,11 +160,26 @@ class TimeTrackingService
                 $startTime = $data['start_time'] ?? $timeEntry->start_time;
                 $endTime = $data['end_time'] ?? $timeEntry->end_time;
                 
-                if ($endTime <= $startTime) {
+                // Convert to timestamps for comparison and calculation
+                // Handle Carbon instances (Laravel casts datetime to Carbon)
+                $startTimestamp = $startTime instanceof \Carbon\Carbon 
+                    ? $startTime->timestamp 
+                    : ($startTime instanceof \DateTime 
+                        ? $startTime->getTimestamp() 
+                        : (new \DateTime($startTime))->getTimestamp());
+                
+                $endTimestamp = $endTime instanceof \Carbon\Carbon 
+                    ? $endTime->timestamp 
+                    : ($endTime instanceof \DateTime 
+                        ? $endTime->getTimestamp() 
+                        : (new \DateTime($endTime))->getTimestamp());
+                
+                if ($endTimestamp <= $startTimestamp) {
                     throw new \Exception('End time must be after start time.');
                 }
 
-                $data['duration'] = $startTime->diffInSeconds($endTime);
+                // Calculate duration in seconds using timestamps
+                $data['duration'] = abs($endTimestamp - $startTimestamp);
             }
 
             $timeEntry->update($data);

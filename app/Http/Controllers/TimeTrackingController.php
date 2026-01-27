@@ -367,4 +367,95 @@ class TimeTrackingController extends Controller
             'time_entry' => $timeEntry,
         ]);
     }
+
+    public function edit(\App\Models\TimeEntry $timeEntry)
+    {
+        $workspaceId = session('current_workspace_id');
+        $user = auth()->user();
+
+        // Check access - users can only edit their own entries
+        if ($timeEntry->workspace_id != $workspaceId || $timeEntry->user_id != $user->id) {
+            abort(403, 'You can only edit your own time entries.');
+        }
+
+        // Get tasks for the edit form
+        $tasks = $this->getTasksForTimeTracking($workspaceId, $user);
+
+        return view('time-tracking.edit', compact('timeEntry', 'tasks'));
+    }
+
+    public function update(Request $request, \App\Models\TimeEntry $timeEntry)
+    {
+        $workspaceId = session('current_workspace_id');
+        $user = auth()->user();
+
+        // Check access - users can only update their own entries
+        if ($timeEntry->workspace_id != $workspaceId || $timeEntry->user_id != $user->id) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'You can only update your own time entries.',
+                ], 403);
+            }
+            abort(403, 'You can only update your own time entries.');
+        }
+
+        $validated = $request->validate([
+            'task_id' => 'required|exists:tasks,id',
+            'start_time' => 'required|date',
+            'end_time' => 'required|date|after:start_time',
+            'description' => 'nullable|string',
+            'is_billable' => 'nullable|boolean',
+        ]);
+
+        $task = Task::findOrFail($validated['task_id']);
+
+        // Guests can only track time on tasks assigned to them
+        if ($user->isGuestInWorkspace($workspaceId)) {
+            if (!$task->assignees->contains($user->id)) {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'You can only track time on tasks assigned to you.',
+                    ], 403);
+                }
+                return back()->withErrors([
+                    'task_id' => 'You can only track time on tasks assigned to you.'
+                ])->withInput();
+            }
+        }
+
+        try {
+            $updatedEntry = $this->timeTrackingService->updateEntry(
+                $timeEntry,
+                [
+                    'task_id' => $validated['task_id'],
+                    'start_time' => new \DateTime($validated['start_time']),
+                    'end_time' => new \DateTime($validated['end_time']),
+                    'description' => $validated['description'] ?? null,
+                    'is_billable' => $validated['is_billable'] ?? false,
+                ],
+                $user
+            );
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'time_entry' => $updatedEntry,
+                ]);
+            }
+
+            return redirect()->route('time-tracking.index')
+                ->with('success', 'Time entry updated successfully.');
+        } catch (\Exception $e) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ], 400);
+            }
+
+            return back()->withErrors(['error' => $e->getMessage()])->withInput();
+        }
+    }
 }

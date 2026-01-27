@@ -235,6 +235,14 @@ Route::middleware(['auth'])->group(function () {
                 ->firstOrFail();
         });
         
+        // Bind time_entry to workspace scope
+        Route::bind('time_entry', function ($value) {
+            $workspaceId = session('current_workspace_id');
+            return \App\Models\TimeEntry::where('id', $value)
+                ->where('workspace_id', $workspaceId)
+                ->firstOrFail();
+        });
+        
         Route::get('/projects', [ProjectController::class, 'index'])->name('projects.index');
         Route::get('/projects/create', [ProjectController::class, 'create'])->name('projects.create');
         Route::post('/projects', [ProjectController::class, 'store'])->name('projects.store');
@@ -323,6 +331,8 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/stop', [TimeTrackingController::class, 'stop'])->name('stop');
             Route::post('/manual', [TimeTrackingController::class, 'createManual'])->name('manual');
             Route::get('/tasks', [TimeTrackingController::class, 'getTasksForTracking'])->name('tasks');
+            Route::get('/entries/{time_entry}/edit', [TimeTrackingController::class, 'edit'])->name('entries.edit');
+            Route::put('/entries/{time_entry}', [TimeTrackingController::class, 'update'])->name('entries.update');
         });
         
         // Estimation Polling routes
