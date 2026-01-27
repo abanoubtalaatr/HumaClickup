@@ -209,7 +209,7 @@ class WorkspaceController extends Controller
             
             // Separate all guests and all members for filtering
             // Get all users directly from User model without any conditions, but exclude users who have any workspace
-            $allGuests = User::doesntHave('workspaces')
+            $allGuestsForView = User::doesntHave('workspaces')
                 ->get()
                 ->map(function ($user) {
                     // Create a default pivot object to prevent null errors
@@ -224,6 +224,12 @@ class WorkspaceController extends Controller
                     return $user;
                 });
             
+            // For assignment modal, only show guests who are already in this workspace
+            $allGuests = $workspace->users()
+                ->wherePivot('role', 'guest')
+                ->withPivot(['role', 'track_id', 'created_by_user_id', 'attendance_days', 'absence_count', 'is_suspended'])
+                ->get();
+            
             $allMembers = $workspace->users()
                 ->wherePivotIn('role', ['owner', 'admin', 'member'])
                 ->withPivot(['role', 'track_id', 'created_by_user_id', 'attendance_days', 'absence_count', 'is_suspended'])
@@ -237,7 +243,7 @@ class WorkspaceController extends Controller
         // Check if admin
         $isAdmin = $user->isAdminInWorkspace($workspace->id);
 
-        return view('workspaces.members', compact('workspace', 'members', 'roles', 'tracks', 'canInviteExisting', 'isAdmin', 'allGuests', 'allMembers', 'filter'));
+        return view('workspaces.members', compact('workspace', 'members', 'roles', 'tracks', 'canInviteExisting', 'isAdmin', 'allGuests', 'allGuestsForView', 'allMembers', 'filter'));
     }
 
     /**
