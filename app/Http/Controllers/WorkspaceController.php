@@ -208,11 +208,32 @@ class WorkspaceController extends Controller
             $roles = ['admin', 'member', 'guest'];
             
             // Separate all guests and all members for filtering
-            $allGuests = $workspace->users()
-                ->wherePivot('role', 'guest')
-                ->withPivot(['role', 'track_id', 'created_by_user_id', 'attendance_days', 'absence_count', 'is_suspended'])
+            // Get all guests directly from User model using join with workspace_user table
+            $allGuests = User::join('workspace_user', 'users.id', '=', 'workspace_user.user_id')
+                ->where('workspace_user.workspace_id', $workspace->id)
+                ->where('workspace_user.role', 'guest')
+                ->select('users.*', 
+                    'workspace_user.role as pivot_role',
+                    'workspace_user.track_id as pivot_track_id',
+                    'workspace_user.created_by_user_id as pivot_created_by_user_id',
+                    'workspace_user.attendance_days as pivot_attendance_days',
+                    'workspace_user.absence_count as pivot_absence_count',
+                    'workspace_user.is_suspended as pivot_is_suspended'
+                )
                 ->withCount('tasks')
-                ->get();
+                ->get()
+                ->map(function ($user) {
+                    // Create a pivot-like object for compatibility
+                    $user->pivot = (object) [
+                        'role' => $user->pivot_role,
+                        'track_id' => $user->pivot_track_id,
+                        'created_by_user_id' => $user->pivot_created_by_user_id,
+                        'attendance_days' => $user->pivot_attendance_days,
+                        'absence_count' => $user->pivot_absence_count,
+                        'is_suspended' => $user->pivot_is_suspended,
+                    ];
+                    return $user;
+                });
             
             $allMembers = $workspace->users()
                 ->wherePivotIn('role', ['owner', 'admin', 'member'])
