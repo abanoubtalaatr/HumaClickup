@@ -58,17 +58,17 @@
                 </div>
                 
                 <!-- Track Filter -->
-                <div class="flex items-center space-x-4 border-t border-gray-200 dark:border-gray-700 pt-4">
-                    <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Filter by Track:</label>
-                    <div class="flex space-x-2">
+                <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Filter by Track:</label>
+                    <div class="flex flex-wrap gap-2">
                         <a href="{{ route('time-tracking.index', array_merge(request()->except('track_id'))) }}" 
-                           class="px-4 py-2 rounded-md text-sm font-medium {{ !($trackFilter ?? null) ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600' }}">
+                           class="px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap {{ !($trackFilter ?? null) ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600' }}">
                             All Tracks
                         </a>
                         @foreach($tracks ?? [] as $track)
                             <a href="{{ route('time-tracking.index', array_merge(request()->except('track_id'), ['track_id' => $track->id])) }}" 
-                               class="px-4 py-2 rounded-md text-sm font-medium flex items-center {{ ($trackFilter ?? null) == $track->id ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600' }}">
-                                <div class="h-3 w-3 rounded-full mr-2" style="background-color: {{ $track->color }}"></div>
+                               class="px-4 py-2 rounded-md text-sm font-medium flex items-center whitespace-nowrap {{ ($trackFilter ?? null) == $track->id ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600' }}">
+                                <div class="h-3 w-3 rounded-full mr-2 flex-shrink-0" style="background-color: {{ $track->color }}"></div>
                                 {{ $track->name }}
                             </a>
                         @endforeach
