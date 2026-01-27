@@ -66,7 +66,7 @@ class TimeTrackingController extends Controller
         // Get filter period (default: week)
         $period = $request->get('period', 'week');
         $startDate = $this->getStartDateForPeriod($period);
-        $endDate = now();
+        $endDate = $this->getEndDateForPeriod($period);
 
         // Get only guests created by this member
         $guests = $workspace->users()
@@ -79,7 +79,8 @@ class TimeTrackingController extends Controller
             $timeEntries = \App\Models\TimeEntry::where('workspace_id', $workspaceId)
                 ->where('user_id', $guest->id)
                 ->whereNotNull('end_time')
-                ->whereBetween('start_time', [$startDate, $endDate])
+                ->where('start_time', '>=', $startDate)
+                ->where('start_time', '<=', $endDate)
                 ->with(['task.project'])
                 ->get();
 
@@ -95,6 +96,25 @@ class TimeTrackingController extends Controller
                 'track' => $guest->getTrackInWorkspace($workspaceId),
             ];
         });
+
+        // Apply sorting filter
+        $sortFilter = $request->get('sort', 'all');
+        if ($sortFilter === 'most') {
+            // Sort by total duration descending, but filter out zero entries first
+            $guestTimeData = $guestTimeData->filter(function ($data) {
+                return $data['total_duration'] > 0;
+            })->sortByDesc('total_duration')->values();
+        } elseif ($sortFilter === 'lower') {
+            // Sort by total duration ascending, but filter out zero entries first
+            $guestTimeData = $guestTimeData->filter(function ($data) {
+                return $data['total_duration'] > 0;
+            })->sortBy('total_duration')->values();
+        } elseif ($sortFilter === 'never') {
+            // Show only users with no time entries
+            $guestTimeData = $guestTimeData->filter(function ($data) {
+                return $data['entries_count'] === 0;
+            })->values();
+        }
 
         // Get aggregated statistics
         $totalDuration = $guestTimeData->sum('total_duration');
@@ -110,7 +130,8 @@ class TimeTrackingController extends Controller
             'totalFormatted',
             'startDate',
             'endDate',
-            'member'
+            'member',
+            'sortFilter'
         ));
     }
 
@@ -124,7 +145,7 @@ class TimeTrackingController extends Controller
         // Get filter period (default: week)
         $period = $request->get('period', 'week');
         $startDate = $this->getStartDateForPeriod($period);
-        $endDate = now();
+        $endDate = $this->getEndDateForPeriod($period);
 
         // Get all guests in the workspace
         $guests = $workspace->users()
@@ -136,7 +157,8 @@ class TimeTrackingController extends Controller
             $timeEntries = \App\Models\TimeEntry::where('workspace_id', $workspaceId)
                 ->where('user_id', $guest->id)
                 ->whereNotNull('end_time')
-                ->whereBetween('start_time', [$startDate, $endDate])
+                ->where('start_time', '>=', $startDate)
+                ->where('start_time', '<=', $endDate)
                 ->with(['task.project'])
                 ->get();
 
@@ -153,6 +175,25 @@ class TimeTrackingController extends Controller
             ];
         });
 
+        // Apply sorting filter
+        $sortFilter = $request->get('sort', 'all');
+        if ($sortFilter === 'most') {
+            // Sort by total duration descending, but filter out zero entries first
+            $guestTimeData = $guestTimeData->filter(function ($data) {
+                return $data['total_duration'] > 0;
+            })->sortByDesc('total_duration')->values();
+        } elseif ($sortFilter === 'lower') {
+            // Sort by total duration ascending, but filter out zero entries first
+            $guestTimeData = $guestTimeData->filter(function ($data) {
+                return $data['total_duration'] > 0;
+            })->sortBy('total_duration')->values();
+        } elseif ($sortFilter === 'never') {
+            // Show only users with no time entries
+            $guestTimeData = $guestTimeData->filter(function ($data) {
+                return $data['entries_count'] === 0;
+            })->values();
+        }
+
         // Get aggregated statistics
         $totalDuration = $guestTimeData->sum('total_duration');
         $totalEntries = $guestTimeData->sum('entries_count');
@@ -165,7 +206,8 @@ class TimeTrackingController extends Controller
             'startDate',
             'endDate',
             'totalFormatted',
-            'totalEntries'
+            'totalEntries',
+            'sortFilter'
         ));
     }
 
@@ -200,6 +242,22 @@ class TimeTrackingController extends Controller
             '4weeks' => now()->subWeeks(4)->startOfDay(),
             'month' => now()->startOfMonth(),
             default => now()->startOfWeek(),
+        };
+    }
+    
+    /**
+     * Get end date based on selected period
+     */
+    private function getEndDateForPeriod(string $period)
+    {
+        return match($period) {
+            'day' => now()->endOfDay(),
+            'week' => now()->endOfWeek(),
+            '2weeks' => now()->endOfDay(),
+            '3weeks' => now()->endOfDay(),
+            '4weeks' => now()->endOfDay(),
+            'month' => now()->endOfMonth(),
+            default => now()->endOfWeek(),
         };
     }
 

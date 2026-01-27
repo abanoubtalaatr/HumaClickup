@@ -26,36 +26,62 @@
             </div>
         </div>
 
-        <!-- Period Filter -->
+        <!-- Filters -->
         <div class="mb-6 bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-            <div class="flex items-center justify-between">
-                <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300">Time Period</h3>
-                <div class="flex space-x-2">
-                    <a href="{{ route('time-tracking.index', ['period' => 'day']) }}" 
-                       class="px-3 py-1.5 rounded text-sm font-medium {{ $period === 'day' ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700' }}">
-                        Today
-                    </a>
-                    <a href="{{ route('time-tracking.index', ['period' => 'week']) }}" 
-                       class="px-3 py-1.5 rounded text-sm font-medium {{ $period === 'week' ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700' }}">
-                        Week
-                    </a>
-                    <a href="{{ route('time-tracking.index', ['period' => '2weeks']) }}" 
-                       class="px-3 py-1.5 rounded text-sm font-medium {{ $period === '2weeks' ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700' }}">
-                        2 Weeks
-                    </a>
-                    <a href="{{ route('time-tracking.index', ['period' => '3weeks']) }}" 
-                       class="px-3 py-1.5 rounded text-sm font-medium {{ $period === '3weeks' ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700' }}">
-                        3 Weeks
-                    </a>
-                    <a href="{{ route('time-tracking.index', ['period' => 'month']) }}" 
-                       class="px-3 py-1.5 rounded text-sm font-medium {{ $period === 'month' ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700' }}">
-                        Month
-                    </a>
+            <div class="space-y-4">
+                <!-- Period Filter -->
+                <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300">Time Period</h3>
+                    <div class="flex space-x-2">
+                        <a href="{{ route('time-tracking.index', array_merge(request()->except('period'), ['period' => 'day'])) }}" 
+                           class="px-3 py-1.5 rounded text-sm font-medium {{ $period === 'day' ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700' }}">
+                            Today
+                        </a>
+                        <a href="{{ route('time-tracking.index', array_merge(request()->except('period'), ['period' => 'week'])) }}" 
+                           class="px-3 py-1.5 rounded text-sm font-medium {{ $period === 'week' ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700' }}">
+                            Week
+                        </a>
+                        <a href="{{ route('time-tracking.index', array_merge(request()->except('period'), ['period' => '2weeks'])) }}" 
+                           class="px-3 py-1.5 rounded text-sm font-medium {{ $period === '2weeks' ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700' }}">
+                            2 Weeks
+                        </a>
+                        <a href="{{ route('time-tracking.index', array_merge(request()->except('period'), ['period' => '3weeks'])) }}" 
+                           class="px-3 py-1.5 rounded text-sm font-medium {{ $period === '3weeks' ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700' }}">
+                            3 Weeks
+                        </a>
+                        <a href="{{ route('time-tracking.index', array_merge(request()->except('period'), ['period' => 'month'])) }}" 
+                           class="px-3 py-1.5 rounded text-sm font-medium {{ $period === 'month' ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700' }}">
+                            Month
+                        </a>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                    Showing data from {{ $startDate->format('M d, Y') }} to {{ $endDate->format('M d, Y') }}
+                </p>
+                
+                <!-- Sort Filter -->
+                <div class="flex items-center justify-between border-t border-gray-200 dark:border-gray-700 pt-4">
+                    <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300">Sort by:</h3>
+                    <div class="flex space-x-2">
+                        <a href="{{ route('time-tracking.index', array_merge(request()->except('sort'), ['sort' => 'all'])) }}" 
+                           class="px-3 py-1.5 rounded text-sm font-medium {{ ($sortFilter ?? 'all') === 'all' ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700' }}">
+                            All
+                        </a>
+                        <a href="{{ route('time-tracking.index', array_merge(request()->except('sort'), ['sort' => 'most'])) }}" 
+                           class="px-3 py-1.5 rounded text-sm font-medium {{ ($sortFilter ?? 'all') === 'most' ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700' }}">
+                            Most Tracking
+                        </a>
+                        <a href="{{ route('time-tracking.index', array_merge(request()->except('sort'), ['sort' => 'lower'])) }}" 
+                           class="px-3 py-1.5 rounded text-sm font-medium {{ ($sortFilter ?? 'all') === 'lower' ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700' }}">
+                            Lower Tracking
+                        </a>
+                        <a href="{{ route('time-tracking.index', array_merge(request()->except('sort'), ['sort' => 'never'])) }}" 
+                           class="px-3 py-1.5 rounded text-sm font-medium {{ ($sortFilter ?? 'all') === 'never' ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700' }}">
+                            Never Tracking
+                        </a>
+                    </div>
                 </div>
             </div>
-            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                Showing data from {{ $startDate->format('M d, Y') }} to {{ $endDate->format('M d, Y') }}
-            </p>
         </div>
 
         <!-- Summary Statistics -->
