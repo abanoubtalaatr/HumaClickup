@@ -208,20 +208,8 @@ class WorkspaceController extends Controller
             $roles = ['admin', 'member', 'guest'];
             
             // Separate all guests and all members for filtering
-            // Get all guests directly from User model without any conditions
-            $allGuests = User::all()
-                ->map(function ($user) use ($workspace) {
-                    // Load workspace relationship and attach pivot if user is a guest in this workspace
-                    $workspaceRelation = $user->workspaces()->where('workspaces.id', $workspace->id)->first();
-                    if ($workspaceRelation && $workspaceRelation->pivot->role === 'guest') {
-                        $user->pivot = $workspaceRelation->pivot;
-                        $user->tasks_count = $user->tasks()->count();
-                        return $user;
-                    }
-                    return null;
-                })
-                ->filter()
-                ->values();
+            // Get all users directly from User model without any conditions
+            $allGuests = User::all();
             
             $allMembers = $workspace->users()
                 ->wherePivotIn('role', ['owner', 'admin', 'member'])
