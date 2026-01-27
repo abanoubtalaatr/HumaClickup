@@ -103,7 +103,7 @@
                     </a>
                     <a href="{{ route('workspaces.members', array_merge([$workspace], request()->except('filter'), ['filter' => 'guests'])) }}" 
                        class="px-4 py-2 rounded-md text-sm font-medium {{ ($filter ?? 'all') === 'guests' ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600' }}">
-                        All Guests ({{ $allGuests->count() ?? 0 }})
+                        All Guests ({{ ($allGuestsForView ?? $allGuests ?? collect())->count() }})
                     </a>
                     <a href="{{ route('workspaces.members', array_merge([$workspace], request()->except('filter'), ['filter' => 'members'])) }}" 
                        class="px-4 py-2 rounded-md text-sm font-medium {{ ($filter ?? 'all') === 'members' ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600' }}">
