@@ -522,23 +522,35 @@ class WorkspaceController extends Controller
             return back()->with('error', 'Selected member is not valid.');
         }
 
-        // Verify all guests are in this workspace and are actually guests
-        $guests = $workspace->users()
-            ->wherePivot('role', 'guest')
-            ->whereIn('users.id', $guestIds)
-            ->get();
+        // Get member's track_id from their pivot
+        $memberTrackId = $member->pivot->track_id;
 
-        // if ($guests->count() !== count($guestIds)) {
-        //     return back()->with('error', 'Some selected guests are not valid.');
-        // }
+        // Verify all guest IDs exist as users
+        $guests = User::whereIn('id', $guestIds)->get();
 
-        // Update created_by_user_id for each guest
-        foreach ($guests as $guest) {
-            $workspace->users()->updateExistingPivot($guest->id, [
-                'created_by_user_id' => $memberId,
-            ]);
+        if ($guests->count() !== count($guestIds)) {
+            return back()->with('error', 'Some selected guests are not valid.');
         }
 
-        return back()->with('success', "Successfully assigned {$guests->count()} guest(s) to {$member->name}.");
+        // Create workspace_user entries for each guest
+        $createdCount = 0;
+        foreach ($guests as $guest) {
+            // Check if guest already exists in workspace
+            $existingPivot = $workspace->users()->where('users.id', $guest->id)->first();
+            
+            if ($existingPivot) {
+                // Update existing entry
+                $workspace->users()->updateExistingPivot($guest->id, [
+                    'created_by_user_id' => $memberId,
+                    'track_id' => $memberTrackId,
+                ]);
+            } else {
+                // Create new entry in workspace_user table
+                $workspace->addMember($guest, 'guest', $memberTrackId, $memberId);
+            }
+            $createdCount++;
+        }
+
+        return back()->with('success', "Successfully assigned {$createdCount} guest(s) to {$member->name}.");
     }
 }
