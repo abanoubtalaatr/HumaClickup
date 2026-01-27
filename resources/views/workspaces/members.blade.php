@@ -81,7 +81,7 @@
                 </button>
             @endif
             @if($isAdmin)
-                <button @click="showAssignModal = true; selectedMemberId = ''; selectedGuestIds = [];" 
+                <button @click="showAssignModal = true; selectedMemberId = ''; selectedGuestIds = []; assignGuestSearch = '';" 
                         class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700">
                     <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
@@ -822,11 +822,26 @@
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                     Select Guests (<span x-text="selectedGuestIds.length"></span> selected)
                                 </label>
+                                <!-- Search Input for Guests -->
+                                <div class="relative mb-3">
+                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                                        </svg>
+                                    </div>
+                                    <input type="text" 
+                                           x-model="assignGuestSearch" 
+                                           placeholder="Search guests by name or email..." 
+                                           class="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                </div>
                                 <div class="max-h-64 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-md p-3 bg-gray-50 dark:bg-gray-700/50">
                                     @if(($allGuests ?? collect())->count() > 0)
                                         <div class="space-y-2">
                                             @foreach($allGuests ?? [] as $guest)
-                                                <label class="flex items-center space-x-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-600 rounded cursor-pointer">
+                                                <label class="flex items-center space-x-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-600 rounded cursor-pointer"
+                                                       data-guest-name="{{ strtolower($guest->name) }}"
+                                                       data-guest-email="{{ strtolower($guest->email) }}"
+                                                       x-show="!assignGuestSearch || $el.dataset.guestName.includes(assignGuestSearch.toLowerCase()) || $el.dataset.guestEmail.includes(assignGuestSearch.toLowerCase())">
                                                     <input type="checkbox" name="guest_ids[]" value="{{ $guest->id }}" 
                                                            @change="toggleGuest({{ $guest->id }}, $event.target.checked)"
                                                            :checked="selectedGuestIds.includes({{ $guest->id }})"
@@ -1083,6 +1098,7 @@ function membersManager() {
         showEditModal: false,
         showRemoveModal: false,
         guestSearch: '',
+        assignGuestSearch: '',
         newMemberRole: '{{ in_array("guest", $roles) ? "guest" : (in_array("member", $roles) ? "member" : "admin") }}',
         inviteRole: 'member',
         selectedMemberId: '',
