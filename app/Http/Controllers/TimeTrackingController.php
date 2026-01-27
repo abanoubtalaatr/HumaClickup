@@ -67,12 +67,26 @@ class TimeTrackingController extends Controller
         $period = $request->get('period', 'week');
         $startDate = $this->getStartDateForPeriod($period);
         $endDate = $this->getEndDateForPeriod($period);
+        
+        // Get all tracks for filter
+        $tracks = \App\Models\Track::where('workspace_id', $workspaceId)
+            ->where('is_active', true)
+            ->orderBy('order')
+            ->orderBy('name')
+            ->get();
 
         // Get only guests created by this member
-        $guests = $workspace->users()
+        $guestsQuery = $workspace->users()
             ->wherePivot('role', 'guest')
-            ->wherePivot('created_by_user_id', $member->id)
-            ->get();
+            ->wherePivot('created_by_user_id', $member->id);
+        
+        // Apply track filter if provided
+        $trackFilter = $request->get('track_id');
+        if ($trackFilter) {
+            $guestsQuery->wherePivot('track_id', $trackFilter);
+        }
+        
+        $guests = $guestsQuery->get();
 
         // Get time tracking data for each guest
         $guestTimeData = $guests->map(function ($guest) use ($workspaceId, $startDate, $endDate) {
@@ -131,7 +145,9 @@ class TimeTrackingController extends Controller
             'startDate',
             'endDate',
             'member',
-            'sortFilter'
+            'sortFilter',
+            'tracks',
+            'trackFilter'
         ));
     }
 
@@ -146,11 +162,25 @@ class TimeTrackingController extends Controller
         $period = $request->get('period', 'week');
         $startDate = $this->getStartDateForPeriod($period);
         $endDate = $this->getEndDateForPeriod($period);
+        
+        // Get all tracks for filter
+        $tracks = \App\Models\Track::where('workspace_id', $workspaceId)
+            ->where('is_active', true)
+            ->orderBy('order')
+            ->orderBy('name')
+            ->get();
 
         // Get all guests in the workspace
-        $guests = $workspace->users()
-            ->wherePivot('role', 'guest')
-            ->get();
+        $guestsQuery = $workspace->users()
+            ->wherePivot('role', 'guest');
+        
+        // Apply track filter if provided
+        $trackFilter = $request->get('track_id');
+        if ($trackFilter) {
+            $guestsQuery->wherePivot('track_id', $trackFilter);
+        }
+        
+        $guests = $guestsQuery->get();
 
         // Get time tracking data for each guest
         $guestTimeData = $guests->map(function ($guest) use ($workspaceId, $startDate, $endDate) {
@@ -207,7 +237,9 @@ class TimeTrackingController extends Controller
             'endDate',
             'totalFormatted',
             'totalEntries',
-            'sortFilter'
+            'sortFilter',
+            'tracks',
+            'trackFilter'
         ));
     }
 
