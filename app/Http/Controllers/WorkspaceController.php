@@ -170,7 +170,7 @@ class WorkspaceController extends Controller
     /**
      * Show workspace members management page
      */
-    public function members(Workspace $workspace)
+    public function members(Request $request, Workspace $workspace)
     {
         $user = auth()->user();
         $currentUserRole = $user->getRoleInWorkspace($workspace->id);
@@ -183,6 +183,9 @@ class WorkspaceController extends Controller
         // Load workspace with users
         $workspace->load(['users', 'owner', 'tracks']);
         
+        // Get filter from request (default: 'all')
+        $filter = $request->get('filter', 'all');
+        
         // For members, only show guests they created
         if ($user->isMemberOnlyInWorkspace($workspace->id)) {
             $members = $workspace->users()
@@ -193,6 +196,8 @@ class WorkspaceController extends Controller
                 ->get();
             $canInviteExisting = false;
             $roles = ['guest'];
+            $allGuests = collect();
+            $allMembers = collect();
         } else {
             // Admin/Owner can see all members
             $members = $workspace->users()
@@ -201,6 +206,19 @@ class WorkspaceController extends Controller
                 ->get();
             $canInviteExisting = true;
             $roles = ['admin', 'member', 'guest'];
+            
+            // Separate all guests and all members for filtering
+            $allGuests = $workspace->users()
+                ->wherePivot('role', 'guest')
+                ->withPivot(['role', 'track_id', 'created_by_user_id', 'attendance_days', 'absence_count', 'is_suspended'])
+                ->withCount('tasks')
+                ->get();
+            
+            $allMembers = $workspace->users()
+                ->wherePivotIn('role', ['owner', 'admin', 'member'])
+                ->withPivot(['role', 'track_id', 'created_by_user_id', 'attendance_days', 'absence_count', 'is_suspended'])
+                ->withCount('tasks')
+                ->get();
         }
         
         // Get tracks for the workspace
@@ -209,7 +227,7 @@ class WorkspaceController extends Controller
         // Check if admin
         $isAdmin = $user->isAdminInWorkspace($workspace->id);
 
-        return view('workspaces.members', compact('workspace', 'members', 'roles', 'tracks', 'canInviteExisting', 'isAdmin'));
+        return view('workspaces.members', compact('workspace', 'members', 'roles', 'tracks', 'canInviteExisting', 'isAdmin', 'allGuests', 'allMembers', 'filter'));
     }
 
     /**
@@ -405,32 +423,32 @@ class WorkspaceController extends Controller
         // }
 
         // Get tasks assigned to this user
-        $assignedTasks = Task::where('workspace_id', $workspace->id)
-            ->whereHas('assignees', function ($q) use ($targetUser) {
-                $q->where('user_id', $targetUser->id);
-            })->get();
+        // $assignedTasks = Task::where('workspace_id', $workspace->id)
+        //     ->whereHas('assignees', function ($q) use ($targetUser) {
+        //         $q->where('user_id', $targetUser->id);
+        //     })->get();
 
         // Handle task reassignment if specified
-        $reassignTo = $request->input('reassign_to');
-        if ($reassignTo && $assignedTasks->count() > 0) {
-            $newAssignee = User::find($reassignTo);
-            if ($newAssignee && $workspace->users()->where('user_id', $newAssignee->id)->exists()) {
-                foreach ($assignedTasks as $task) {
-                    // Remove old assignee and add new one
-                    $task->assignees()->detach($targetUser->id);
-                    if (!$task->assignees()->where('user_id', $newAssignee->id)->exists()) {
-                        $task->assignees()->attach($newAssignee->id);
-                    }
-                }
-            }
-        } else if ($assignedTasks->count() > 0) {
-            // Just remove the user from assigned tasks
-            foreach ($assignedTasks as $task) {
-                $task->assignees()->detach($targetUser->id);
-            }
-        }
+        // $reassignTo = $request->input('reassign_to');
+        // if ($reassignTo && $assignedTasks->count() > 0) {
+        //     $newAssignee = User::find($reassignTo);
+        //     if ($newAssignee && $workspace->users()->where('user_id', $newAssignee->id)->exists()) {
+        //         foreach ($assignedTasks as $task) {
+        //             // Remove old assignee and add new one
+        //             $task->assignees()->detach($targetUser->id);
+        //             if (!$task->assignees()->where('user_id', $newAssignee->id)->exists()) {
+        //                 $task->assignees()->attach($newAssignee->id);
+        //             }
+        //         }
+        //     }
+        // } else if ($assignedTasks->count() > 0) {
+        //     // Just remove the user from assigned tasks
+        //     foreach ($assignedTasks as $task) {
+        //         $task->assignees()->detach($targetUser->id);
+        //     }
+        // }
 
-        $workspace->removeMember($targetUser);
+        // $workspace->removeMember($targetUser);
 
         return back()->with('success', "Successfully removed {$targetUser->name} from the workspace.");
     }
@@ -462,5 +480,55 @@ class WorkspaceController extends Controller
             'tasks' => $tasks,
             'members' => $otherMembers,
         ]);
+    }
+
+    /**
+     * Assign guests to a member (update created_by_user_id)
+     */
+    public function assignGuestsToMember(Request $request, Workspace $workspace)
+    {
+        $user = auth()->user();
+        
+        // Only admins can assign guests
+        if (!$user->isAdminInWorkspace($workspace->id)) {
+            abort(403, 'You do not have permission to assign guests.');
+        }
+
+        $validated = $request->validate([
+            'member_id' => 'required|exists:users,id',
+            'guest_ids' => 'required|array',
+            'guest_ids.*' => 'exists:users,id',
+        ]);
+
+        $memberId = $validated['member_id'];
+        $guestIds = $validated['guest_ids'];
+
+        // Verify the member is in this workspace and is a member/admin/owner
+        $member = $workspace->users()
+            ->wherePivotIn('role', ['owner', 'admin', 'member'])
+            ->find($memberId);
+        
+        if (!$member) {
+            return back()->with('error', 'Selected member is not valid.');
+        }
+
+        // Verify all guests are in this workspace and are actually guests
+        $guests = $workspace->users()
+            ->wherePivot('role', 'guest')
+            ->whereIn('users.id', $guestIds)
+            ->get();
+
+        if ($guests->count() !== count($guestIds)) {
+            return back()->with('error', 'Some selected guests are not valid.');
+        }
+
+        // Update created_by_user_id for each guest
+        foreach ($guests as $guest) {
+            $workspace->users()->updateExistingPivot($guest->id, [
+                'created_by_user_id' => $memberId,
+            ]);
+        }
+
+        return back()->with('success', "Successfully assigned {$guests->count()} guest(s) to {$member->name}.");
     }
 }

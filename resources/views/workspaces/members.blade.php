@@ -80,7 +80,39 @@
                     Invite Existing User
                 </button>
             @endif
+            @if($isAdmin)
+                <button @click="showAssignModal = true; selectedMemberId = ''; selectedGuestIds = [];" 
+                        class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+                    </svg>
+                    Assign Guests to Member
+                </button>
+            @endif
         </div>
+
+        @if($isAdmin)
+        <!-- Filter Toggle -->
+        <div class="mb-6 bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+            <div class="flex items-center space-x-4">
+                <label class="text-sm font-medium text-gray-700 dark:text-gray-300">View:</label>
+                <div class="flex space-x-2">
+                    <a href="{{ route('workspaces.members', array_merge([$workspace], request()->except('filter'), ['filter' => 'all'])) }}" 
+                       class="px-4 py-2 rounded-md text-sm font-medium {{ ($filter ?? 'all') === 'all' ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600' }}">
+                        All
+                    </a>
+                    <a href="{{ route('workspaces.members', array_merge([$workspace], request()->except('filter'), ['filter' => 'guests'])) }}" 
+                       class="px-4 py-2 rounded-md text-sm font-medium {{ ($filter ?? 'all') === 'guests' ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600' }}">
+                        All Guests ({{ $allGuests->count() ?? 0 }})
+                    </a>
+                    <a href="{{ route('workspaces.members', array_merge([$workspace], request()->except('filter'), ['filter' => 'members'])) }}" 
+                       class="px-4 py-2 rounded-md text-sm font-medium {{ ($filter ?? 'all') === 'members' ? 'bg-indigo-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600' }}">
+                        All Members ({{ $allMembers->count() ?? 0 }})
+                    </a>
+                </div>
+            </div>
+        </div>
+        @endif
 
         <!-- Role Permissions Info -->
         <div class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
@@ -106,8 +138,8 @@
             <!-- Admin: Members Statistics -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 @php
-                    $allMembers = $workspace->users;
-                    $memberCounts = $allMembers->groupBy('pivot.role')->map->count();
+                    $allMembersForStats = $workspace->users;
+                    $memberCounts = $allMembersForStats->groupBy('pivot.role')->map->count();
                 @endphp
                 <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
                     <div class="text-2xl font-bold text-purple-600 dark:text-purple-400">{{ $memberCounts->get('owner', 0) }}</div>
@@ -127,13 +159,123 @@
                 </div>
             </div>
 
-            <!-- Admin: Members with their Guests -->
-            @php
-                $membersList = $workspace->users->whereIn('pivot.role', ['owner', 'admin', 'member']);
-                $guestsList = $workspace->users->where('pivot.role', 'guest');
-            @endphp
-            
-            @foreach($membersList as $member)
+            @if(($filter ?? 'all') === 'guests')
+                <!-- Show All Guests -->
+                <div class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden mb-6">
+                    <div class="px-4 py-4 sm:px-6 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-white">All Guests ({{ $allGuests->count() }})</h3>
+                    </div>
+                    @if($allGuests->count() > 0)
+                        <ul class="divide-y divide-gray-200 dark:divide-gray-700">
+                            @foreach($allGuests as $guest)
+                                <li class="px-4 py-3 sm:px-6 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center min-w-0 flex-1">
+                                            <div class="h-8 w-8 rounded-full bg-gray-400 flex items-center justify-center text-white text-sm font-medium">
+                                                {{ strtoupper(substr($guest->name, 0, 1)) }}
+                                            </div>
+                                            <div class="ml-3 min-w-0 flex-1">
+                                                <div class="flex items-center space-x-2">
+                                                    <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ $guest->name }}</p>
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300">
+                                                        Guest
+                                                    </span>
+                                                    @php
+                                                        $guestTrack = $guest->pivot->track_id ? $tracks->firstWhere('id', $guest->pivot->track_id) : null;
+                                                    @endphp
+                                                    @if($guestTrack)
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium" 
+                                                              style="background-color: {{ $guestTrack->color }}20; color: {{ $guestTrack->color }}">
+                                                            {{ $guestTrack->name }}
+                                                        </span>
+                                                    @endif
+                                                    @if($guest->pivot->created_by_user_id)
+                                                        @php
+                                                            $creator = $workspace->users->find($guest->pivot->created_by_user_id);
+                                                        @endphp
+                                                        @if($creator)
+                                                            <span class="text-xs text-gray-500 dark:text-gray-400">
+                                                                Created by: {{ $creator->name }}
+                                                            </span>
+                                                        @endif
+                                                    @else
+                                                        <span class="text-xs text-gray-400 dark:text-gray-500 italic">Unassigned</span>
+                                                    @endif
+                                                </div>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ $guest->email }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @else
+                        <div class="px-4 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
+                            No guests found
+                        </div>
+                    @endif
+                </div>
+            @elseif(($filter ?? 'all') === 'members')
+                <!-- Show All Members -->
+                <div class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden mb-6">
+                    <div class="px-4 py-4 sm:px-6 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-white">All Members ({{ $allMembers->count() }})</h3>
+                    </div>
+                    @if($allMembers->count() > 0)
+                        <ul class="divide-y divide-gray-200 dark:divide-gray-700">
+                            @foreach($allMembers as $member)
+                                <li class="px-4 py-3 sm:px-6 hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                    <div class="flex items-center justify-between">
+                                        <div class="flex items-center min-w-0 flex-1">
+                                            <div class="h-10 w-10 rounded-full flex items-center justify-center text-white font-semibold
+                                                {{ $member->pivot->role === 'owner' ? 'bg-purple-500' : '' }}
+                                                {{ $member->pivot->role === 'admin' ? 'bg-indigo-500' : '' }}
+                                                {{ $member->pivot->role === 'member' ? 'bg-blue-500' : '' }}">
+                                                {{ strtoupper(substr($member->name, 0, 1)) }}
+                                            </div>
+                                            <div class="ml-3 min-w-0 flex-1">
+                                                <div class="flex items-center space-x-2">
+                                                    <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ $member->name }}</p>
+                                                    @if($member->id === auth()->id())
+                                                        <span class="text-xs text-gray-500 dark:text-gray-400">(You)</span>
+                                                    @endif
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+                                                        {{ $member->pivot->role === 'owner' ? 'bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200' : '' }}
+                                                        {{ $member->pivot->role === 'admin' ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200' : '' }}
+                                                        {{ $member->pivot->role === 'member' ? 'bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200' : '' }}">
+                                                        {{ ucfirst($member->pivot->role) }}
+                                                    </span>
+                                                    @php
+                                                        $memberTrack = $member->pivot->track_id ? $tracks->firstWhere('id', $member->pivot->track_id) : null;
+                                                    @endphp
+                                                    @if($memberTrack)
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium" 
+                                                              style="background-color: {{ $memberTrack->color }}20; color: {{ $memberTrack->color }}">
+                                                            {{ $memberTrack->name }}
+                                                        </span>
+                                                    @endif
+                                                </div>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ $member->email }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @else
+                        <div class="px-4 py-12 text-center text-sm text-gray-500 dark:text-gray-400">
+                            No members found
+                        </div>
+                    @endif
+                </div>
+            @else
+                <!-- Admin: Members with their Guests (Default View) -->
+                @php
+                    $membersList = $workspace->users->whereIn('pivot.role', ['owner', 'admin', 'member']);
+                    $guestsList = $workspace->users->where('pivot.role', 'guest');
+                @endphp
+                
+                @foreach($membersList as $member)
                 <div class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden mb-6">
                     <div class="px-4 py-4 sm:px-6 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
                         <div class="flex items-center justify-between">
@@ -358,6 +500,7 @@
                         @endforeach
                     </ul>
                 </div>
+            @endif
             @endif
 
         @else
@@ -614,6 +757,96 @@
     </div>
     @endif
 
+    @if($isAdmin)
+    <!-- Assign Guests to Member Modal -->
+    <div x-show="showAssignModal" x-cloak class="relative z-50" aria-modal="true">
+        <div class="fixed inset-0 bg-gray-500/75 dark:bg-gray-900/75 transition-opacity"></div>
+        <div class="fixed inset-0 z-10 overflow-y-auto">
+            <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                <div @click.stop class="relative transform overflow-hidden rounded-lg bg-white dark:bg-gray-800 px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-2xl sm:p-6">
+                    <div class="absolute right-0 top-0 pr-4 pt-4">
+                        <button @click="showAssignModal = false" class="rounded-md bg-white dark:bg-gray-800 text-gray-400 hover:text-gray-500">
+                            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="sm:flex sm:items-start">
+                        <div class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-green-100 dark:bg-green-900 sm:mx-0 sm:h-10 sm:w-10">
+                            <svg class="h-6 w-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+                            </svg>
+                        </div>
+                        <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left flex-1">
+                            <h3 class="text-lg font-semibold leading-6 text-gray-900 dark:text-white">Assign Guests to Member</h3>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Select a member and choose guests to assign to them</p>
+                        </div>
+                    </div>
+                    <form action="{{ route('workspaces.members.assign-guests', $workspace) }}" method="POST" class="mt-5">
+                        @csrf
+                        <div class="space-y-4">
+                            <div>
+                                <label for="assign_member_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Select Member</label>
+                                <select name="member_id" id="assign_member_id" required x-model="selectedMemberId"
+                                        class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                    <option value="">Choose a member...</option>
+                                    @foreach($allMembers ?? [] as $member)
+                                        <option value="{{ $member->id }}">{{ $member->name }} ({{ ucfirst($member->pivot->role) }})</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Select Guests (<span x-text="selectedGuestIds.length"></span> selected)
+                                </label>
+                                <div class="max-h-64 overflow-y-auto border border-gray-300 dark:border-gray-600 rounded-md p-3 bg-gray-50 dark:bg-gray-700/50">
+                                    @if(($allGuests ?? collect())->count() > 0)
+                                        <div class="space-y-2">
+                                            @foreach($allGuests ?? [] as $guest)
+                                                <label class="flex items-center space-x-2 p-2 hover:bg-gray-100 dark:hover:bg-gray-600 rounded cursor-pointer">
+                                                    <input type="checkbox" name="guest_ids[]" value="{{ $guest->id }}" 
+                                                           @change="toggleGuest({{ $guest->id }}, $event.target.checked)"
+                                                           :checked="selectedGuestIds.includes({{ $guest->id }})"
+                                                           class="rounded border-gray-300 dark:border-gray-600 text-indigo-600 shadow-sm focus:ring-indigo-500">
+                                                    <div class="flex-1">
+                                                        <span class="text-sm font-medium text-gray-900 dark:text-white">{{ $guest->name }}</span>
+                                                        <span class="text-xs text-gray-500 dark:text-gray-400 ml-2">{{ $guest->email }}</span>
+                                                        @if($guest->pivot->created_by_user_id)
+                                                            @php
+                                                                $creator = $workspace->users->find($guest->pivot->created_by_user_id);
+                                                            @endphp
+                                                            @if($creator)
+                                                                <span class="text-xs text-gray-400 dark:text-gray-500 ml-2">(Currently: {{ $creator->name }})</span>
+                                                            @endif
+                                                        @endif
+                                                    </div>
+                                                </label>
+                                            @endforeach
+                                        </div>
+                                    @else
+                                        <p class="text-sm text-gray-500 dark:text-gray-400 text-center py-4">No guests available</p>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-5 sm:mt-6 sm:flex sm:flex-row-reverse">
+                            <button type="submit" :disabled="!selectedMemberId || selectedGuestIds.length === 0"
+                                    :class="!selectedMemberId || selectedGuestIds.length === 0 ? 'opacity-50 cursor-not-allowed' : ''"
+                                    class="inline-flex w-full justify-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 sm:ml-3 sm:w-auto">
+                                Assign Guests
+                            </button>
+                            <button type="button" @click="showAssignModal = false"
+                                    class="mt-3 inline-flex w-full justify-center rounded-md bg-white dark:bg-gray-700 px-3 py-2 text-sm font-semibold text-gray-900 dark:text-white shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 sm:mt-0 sm:w-auto">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
     <!-- Edit Member Modal -->
     <div x-show="showEditModal" x-cloak class="relative z-50" aria-modal="true">
         <div class="fixed inset-0 bg-gray-500/75 dark:bg-gray-900/75 transition-opacity"></div>
@@ -823,10 +1056,13 @@ function membersManager() {
     return {
         showCreateModal: false,
         showInviteModal: false,
+        showAssignModal: false,
         showEditModal: false,
         showRemoveModal: false,
         newMemberRole: '{{ in_array("guest", $roles) ? "guest" : (in_array("member", $roles) ? "member" : "admin") }}',
         inviteRole: 'member',
+        selectedMemberId: '',
+        selectedGuestIds: [],
         editingMember: { id: null, name: '', email: '', whatsapp_number: '', slack_channel_link: '', role: '', track_id: null, attendance_days: [] },
         removingMember: { id: null, name: '', role: '' },
         memberTasks: [],
@@ -856,6 +1092,16 @@ function membersManager() {
                 console.error('Failed to load member tasks:', error);
             } finally {
                 this.loadingTasks = false;
+            }
+        },
+
+        toggleGuest(guestId, isChecked) {
+            if (isChecked) {
+                if (!this.selectedGuestIds.includes(guestId)) {
+                    this.selectedGuestIds.push(guestId);
+                }
+            } else {
+                this.selectedGuestIds = this.selectedGuestIds.filter(id => id !== guestId);
             }
         }
     }
