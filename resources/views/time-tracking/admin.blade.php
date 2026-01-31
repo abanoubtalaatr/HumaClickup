@@ -57,7 +57,7 @@
                     </span>
                 </div>
                 
-                @if(Auth::user()->isAdminInWorkspace($workspaceId))
+                @if(($isWorkspaceOwner ?? false) || Auth::user()->isAdminInWorkspace($workspaceId ?? 0))
                 <!-- Track Filter -->
                 <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Filter by Track:</label>

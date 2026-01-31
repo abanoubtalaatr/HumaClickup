@@ -16,10 +16,12 @@ class TimeTrackingController extends Controller
     {
         $workspaceId = session('current_workspace_id');
         $user = auth()->user();
-        $isAdmin = $user->isAdminInWorkspace($workspaceId);
+        $workspace = \App\Models\Workspace::find($workspaceId);
+        $isOwner = $workspace && (int) $workspace->owner_id === (int) $user->id;
+        $isAdmin = $isOwner || $user->isAdminInWorkspace($workspaceId);
         $isMember = $user->isMemberOnlyInWorkspace($workspaceId);
 
-        // If admin, show admin view with all guests
+        // If owner or admin, show admin view with all guests
         if ($isAdmin && $request->get('view') !== 'personal') {
             return $this->adminTimeTrackingView($request, $workspaceId, $user);
         }
@@ -229,6 +231,7 @@ class TimeTrackingController extends Controller
         $totalEntries = $guestTimeData->sum('entries_count');
         
         $totalFormatted = $this->formatDuration($totalDuration);
+        $isWorkspaceOwner = $workspace && (int) $workspace->owner_id === (int) $admin->id;
 
         return view('time-tracking.admin', compact(
             'guestTimeData',
@@ -240,7 +243,8 @@ class TimeTrackingController extends Controller
             'sortFilter',
             'tracks',
             'trackFilter',
-            'workspaceId'
+            'workspaceId',
+            'isWorkspaceOwner'
         ));
     }
 
@@ -461,14 +465,16 @@ class TimeTrackingController extends Controller
 
     /**
      * Check if the current user can edit the given time entry.
-     * Owner/Admin: any entry in workspace. Member: entries of their guests. Otherwise: own entries only.
+     * Workspace owner / Admin: any entry in workspace. Member: entries of their guests. Otherwise: own entries only.
      */
     private function canEditTimeEntry(\App\Models\TimeEntry $timeEntry, int $workspaceId, $user): bool
     {
         if ($timeEntry->workspace_id != $workspaceId) {
             return false;
         }
-        if ($user->isAdminInWorkspace($workspaceId)) {
+        $workspace = \App\Models\Workspace::find($workspaceId);
+        $isWorkspaceOwner = $workspace && (int) $workspace->owner_id === (int) $user->id;
+        if ($isWorkspaceOwner || $user->isAdminInWorkspace($workspaceId)) {
             return true;
         }
         if ($user->isMemberOnlyInWorkspace($workspaceId)) {
