@@ -57,6 +57,7 @@
                     </span>
                 </div>
                 
+                @if(Auth::user()->isAdminInWorkspace($workspaceId))
                 <!-- Track Filter -->
                 <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Filter by Track:</label>
@@ -97,6 +98,7 @@
                         </a>
                     </div>
                 </div>
+                @endif
             </div>
         </div>
 
@@ -237,9 +239,15 @@
                                                                 @endif
                                                             </p>
                                                         </div>
-                                                        <div class="text-right ml-4">
-                                                            <p class="text-sm font-bold text-gray-900 dark:text-white">{{ $entry->getFormattedDuration() }}</p>
-                                                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ $entry->start_time->format('M d, h:i A') }}</p>
+                                                        <div class="flex items-center gap-3 ml-4">
+                                                            <div class="text-right">
+                                                                <p class="text-sm font-bold text-gray-900 dark:text-white">{{ $entry->getFormattedDuration() }}</p>
+                                                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ $entry->start_time->format('M d, h:i A') }}</p>
+                                                            </div>
+                                                            <a href="{{ route('time-tracking.entries.edit', $entry) }}" 
+                                                               class="inline-flex items-center px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                                                                Edit
+                                                            </a>
                                                         </div>
                                                     </div>
                                                 @endforeach

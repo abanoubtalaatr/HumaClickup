@@ -238,9 +238,9 @@
                                         <div class="flex-1">
                                             <div class="flex items-center space-x-2">
                                                 <span class="text-sm font-medium text-gray-900 dark:text-white">
-                                                    {{ $entry->task->title }}
+                                                    {{ $entry->task?->title ?? 'No task' }}
                                                 </span>
-                                                @if($entry->task->project)
+                                                @if($entry->task?->project)
                                                     <span class="text-xs text-gray-500 dark:text-gray-400">
                                                         in {{ $entry->task->project->name }}
                                                     </span>
@@ -253,8 +253,14 @@
                                                 @endif
                                             </div>
                                         </div>
-                                        <div class="text-sm font-medium text-gray-900 dark:text-white">
-                                            {{ floor($entry->duration / 3600) }}h {{ floor(($entry->duration % 3600) / 60) }}m
+                                        <div class="flex items-center gap-3">
+                                            <div class="text-sm font-medium text-gray-900 dark:text-white">
+                                                {{ floor($entry->duration / 3600) }}h {{ floor(($entry->duration % 3600) / 60) }}m
+                                            </div>
+                                            <a href="{{ route('time-tracking.entries.edit', $entry) }}" 
+                                               class="inline-flex items-center px-2.5 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                                                Edit
+                                            </a>
                                         </div>
                                     </div>
                                     @endforeach

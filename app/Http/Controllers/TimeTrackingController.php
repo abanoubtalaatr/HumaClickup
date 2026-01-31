@@ -239,7 +239,8 @@ class TimeTrackingController extends Controller
             'totalEntries',
             'sortFilter',
             'tracks',
-            'trackFilter'
+            'trackFilter',
+            'workspaceId'
         ));
     }
 
@@ -458,18 +459,38 @@ class TimeTrackingController extends Controller
         ]);
     }
 
+    /**
+     * Check if the current user can edit the given time entry.
+     * Owner/Admin: any entry in workspace. Member: entries of their guests. Otherwise: own entries only.
+     */
+    private function canEditTimeEntry(\App\Models\TimeEntry $timeEntry, int $workspaceId, $user): bool
+    {
+        if ($timeEntry->workspace_id != $workspaceId) {
+            return false;
+        }
+        if ($user->isAdminInWorkspace($workspaceId)) {
+            return true;
+        }
+        if ($user->isMemberOnlyInWorkspace($workspaceId)) {
+            $workspace = \App\Models\Workspace::find($workspaceId);
+            $guestPivot = $workspace->users()->where('user_id', $timeEntry->user_id)->wherePivot('role', 'guest')->first();
+            return $guestPivot && (int) $guestPivot->pivot->created_by_user_id === (int) $user->id;
+        }
+        return (int) $timeEntry->user_id === (int) $user->id;
+    }
+
     public function edit(\App\Models\TimeEntry $timeEntry)
     {
         $workspaceId = session('current_workspace_id');
         $user = auth()->user();
 
-        // Check access - users can only edit their own entries
-        if ($timeEntry->workspace_id != $workspaceId || $timeEntry->user_id != $user->id) {
-            abort(403, 'You can only edit your own time entries.');
+        if (!$this->canEditTimeEntry($timeEntry, $workspaceId, $user)) {
+            abort(403, 'You do not have permission to edit this time entry.');
         }
 
-        // Get tasks for the edit form
-        $tasks = $this->getTasksForTimeTracking($workspaceId, $user);
+        // Get tasks for the edit form (for the entry owner's context when admin/member edits)
+        $entryOwner = \App\Models\User::find($timeEntry->user_id);
+        $tasks = $this->getTasksForTimeTracking($workspaceId, $entryOwner ?? $user);
 
         return view('time-tracking.edit', compact('timeEntry', 'tasks'));
     }
@@ -479,15 +500,14 @@ class TimeTrackingController extends Controller
         $workspaceId = session('current_workspace_id');
         $user = auth()->user();
 
-        // Check access - users can only update their own entries
-        if ($timeEntry->workspace_id != $workspaceId || $timeEntry->user_id != $user->id) {
+        if (!$this->canEditTimeEntry($timeEntry, $workspaceId, $user)) {
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'You can only update your own time entries.',
+                    'message' => 'You do not have permission to update this time entry.',
                 ], 403);
             }
-            abort(403, 'You can only update your own time entries.');
+            abort(403, 'You do not have permission to update this time entry.');
         }
 
         $validated = $request->validate([
@@ -499,18 +519,20 @@ class TimeTrackingController extends Controller
         ]);
 
         $task = Task::findOrFail($validated['task_id']);
+        $entryOwnerId = (int) $timeEntry->user_id;
 
-        // Guests can only track time on tasks assigned to them
-        if ($user->isGuestInWorkspace($workspaceId)) {
-            if (!$task->assignees->contains($user->id)) {
+        // Entry owner (the user who logged the time) must have task assigned when they are a guest
+        $owner = \App\Models\User::find($entryOwnerId);
+        if ($owner && $owner->isGuestInWorkspace($workspaceId)) {
+            if (!$task->assignees->contains($entryOwnerId)) {
                 if ($request->expectsJson()) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'You can only track time on tasks assigned to you.',
+                        'message' => 'Time can only be logged on tasks assigned to the entry owner.',
                     ], 403);
                 }
                 return back()->withErrors([
-                    'task_id' => 'You can only track time on tasks assigned to you.'
+                    'task_id' => 'Time can only be logged on tasks assigned to the entry owner.'
                 ])->withInput();
             }
         }

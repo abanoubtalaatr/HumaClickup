@@ -416,14 +416,44 @@
                             <!-- Assignee -->
                             <div>
                                 <label for="task_assignee" class="block text-sm font-medium text-gray-700 mb-1">Assignee</label>
-                                <select id="task_assignee" 
-                                        x-model="newTask.assignee_id"
-                                        class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                                    <option value="">Unassigned</option>
-                                    @foreach($assignees ?? [] as $assignee)
-                                        <option value="{{ $assignee->id }}">{{ $assignee->name }}</option>
-                                    @endforeach
-                                </select>
+                                <div class="relative">
+                                    <button type="button" @click="assigneeDropdownOpen = !assigneeDropdownOpen; assigneeSearch = ''" 
+                                            class="relative w-full bg-white border border-gray-300 rounded-md shadow-sm pl-3 pr-10 py-2 text-left cursor-pointer focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                                        <span class="block truncate" x-text="newTask.assignee_id ? (assignees.find(a => String(a.id) === String(newTask.assignee_id))?.name || 'Select...') : 'Unassigned'"></span>
+                                        <span class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                                            <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+                                        </span>
+                                    </button>
+                                    <input type="hidden" name="assignee_id" :value="newTask.assignee_id">
+                                    <div x-show="assigneeDropdownOpen" @click.away="assigneeDropdownOpen = false" x-cloak
+                                         class="absolute z-20 mt-1 w-full bg-white shadow-lg max-h-56 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-hidden sm:text-sm">
+                                        <div class="sticky top-0 px-2 py-1 bg-white border-b border-gray-200">
+                                            <input type="text" x-model="assigneeSearch" placeholder="Search assignee..." 
+                                                   class="block w-full rounded border-gray-300 py-1.5 text-sm focus:ring-indigo-500 focus:border-indigo-500" @click.stop>
+                                        </div>
+                                        <div class="max-h-40 overflow-y-auto py-1">
+                                            <button type="button" @click="newTask.assignee_id = ''; assigneeDropdownOpen = false"
+                                                    class="w-full text-left px-3 py-2 hover:bg-gray-100 text-sm"
+                                                    :class="!newTask.assignee_id ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700'">
+                                                Unassigned
+                                            </button>
+                                            @foreach($assignees ?? [] as $assignee)
+                                            <button type="button" 
+                                                    @click="newTask.assignee_id = '{{ $assignee->id }}'; assigneeDropdownOpen = false"
+                                                    class="w-full text-left px-3 py-2 hover:bg-gray-100 text-sm flex items-center"
+                                                    :class="newTask.assignee_id == '{{ $assignee->id }}' ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700'"
+                                                    data-name="{{ strtolower($assignee->name) }}"
+                                                    data-email="{{ strtolower($assignee->email ?? '') }}"
+                                                    x-show="!assigneeSearch || $el.dataset.name.includes(assigneeSearch.toLowerCase()) || $el.dataset.email.includes(assigneeSearch.toLowerCase())">
+                                                {{ $assignee->name }}
+                                                @if(!empty($assignee->email))
+                                                    <span class="ml-2 text-xs text-gray-500">{{ $assignee->email }}</span>
+                                                @endif
+                                            </button>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -460,6 +490,9 @@ function taskList() {
     return {
         showCreateModal: false,
         isLoading: false,
+        assignees: @json($assignees ?? []),
+        assigneeDropdownOpen: false,
+        assigneeSearch: '',
         newTask: {
             type: 'task',
             title: '',
@@ -487,6 +520,8 @@ function taskList() {
                 assignee_id: '',
                 related_task_id: ''
             };
+            this.assigneeDropdownOpen = false;
+            this.assigneeSearch = '';
             this.showCreateModal = true;
             
             // Initialize Quill editor when modal opens

@@ -213,7 +213,7 @@
 
                 <!-- Assignees -->
                 @if($users && $users->count() > 0)
-                <div class="mb-4" x-data="{ assigneesOpen: false }">
+                <div class="mb-4" x-data="{ assigneesOpen: false, assigneeSearch: '' }">
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         Assignees
                     </label>
@@ -229,9 +229,20 @@
                             </span>
                         </button>
                         <div x-show="assigneesOpen" @click.away="assigneesOpen = false" x-cloak
-                             class="absolute z-10 mt-1 w-full bg-white dark:bg-gray-700 shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
+                             class="absolute z-10 mt-1 w-full bg-white dark:bg-gray-700 shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-hidden focus:outline-none sm:text-sm">
+                            <div class="sticky top-0 px-2 py-1 bg-white dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
+                                <input type="text" 
+                                       x-model="assigneeSearch" 
+                                       placeholder="Search by name or email..." 
+                                       class="block w-full rounded border-gray-300 dark:border-gray-600 dark:bg-gray-600 dark:text-white py-1.5 text-sm focus:ring-indigo-500 focus:border-indigo-500"
+                                       @click.stop>
+                            </div>
+                            <div class="max-h-48 overflow-y-auto py-1">
                             @foreach($users as $user)
-                            <label class="flex items-center px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer">
+                            <label class="flex items-center px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer"
+                                   data-name="{{ strtolower($user->name) }}"
+                                   data-email="{{ strtolower($user->email ?? '') }}"
+                                   x-show="!assigneeSearch || $el.dataset.name.includes(assigneeSearch.toLowerCase()) || $el.dataset.email.includes(assigneeSearch.toLowerCase())">
                                 <input type="checkbox" 
                                        name="assignee_ids[]" 
                                        value="{{ $user->id }}"
@@ -239,8 +250,12 @@
                                        @change="updateSelectedAssignees()"
                                        class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
                                 <span class="ml-3 text-sm text-gray-900 dark:text-gray-200">{{ $user->name }}</span>
+                                @if($user->email)
+                                    <span class="ml-2 text-xs text-gray-500 dark:text-gray-400">{{ $user->email }}</span>
+                                @endif
                             </label>
                             @endforeach
+                            </div>
                         </div>
                     </div>
                     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Click to select multiple assignees</p>
