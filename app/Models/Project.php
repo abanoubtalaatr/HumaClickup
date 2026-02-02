@@ -113,17 +113,22 @@ class Project extends Model
 
     protected function calculateProgressByStatus(): void
     {
-        $totalWeight = $this->customStatuses()->sum('progress_contribution');
-        if ($totalWeight == 0) {
+        $totalTasks = $this->tasks()->count();
+        if ($totalTasks == 0) {
             $this->progress = 0;
+            $this->save();
             return;
         }
 
         $weightedSum = $this->tasks()
-            ->join('custom_statuses', 'tasks.status_id', '=', 'custom_statuses.id')
+            ->join('custom_statuses', function ($join) {
+                $join->on('tasks.status_id', '=', 'custom_statuses.id')
+                    ->where('custom_statuses.project_id', '=', $this->getKey());
+            })
             ->sum('custom_statuses.progress_contribution');
 
-        $this->progress = ($weightedSum / $totalWeight) * 100;
+        // Average contribution per task (each status 0-100), clamped to 0-100
+        $this->progress = min(100, max(0, $weightedSum / $totalTasks));
         $this->save();
     }
 
@@ -139,7 +144,7 @@ class Project extends Model
             ->whereHas('status', fn($q) => $q->where('type', 'done'))
             ->count();
 
-        $this->progress = ($done / $total) * 100;
+        $this->progress = min(100, max(0, ($done / $total) * 100));
         $this->save();
     }
 
@@ -156,7 +161,7 @@ class Project extends Model
             ->get()
             ->sum('time_entries_sum_duration');
 
-        $this->progress = min(($logged / $estimated) * 100, 100);
+        $this->progress = min(100, max(0, ($logged / $estimated) * 100));
         $this->save();
     }
 
