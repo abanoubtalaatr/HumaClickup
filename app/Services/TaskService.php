@@ -157,11 +157,17 @@ class TaskService
     {
         return DB::transaction(function () use ($task, $statusId, $position, $user) {
             $oldStatusId = $task->status_id;
+            $positionValue = $position ?? $this->getNextPosition($task->project, $statusId);
 
-            $task->update([
-                'status_id' => $statusId,
-                'position' => $position ?? $this->getNextPosition($task->project, $statusId),
-            ]);
+            // Update by primary key only to avoid global scope affecting the update
+            Task::withoutGlobalScopes()
+                ->where('id', $task->id)
+                ->update([
+                    'status_id' => $statusId,
+                    'position' => $positionValue,
+                ]);
+
+            $task->refresh();
 
             // Handle status change logic
             $this->handleStatusChange($task, $statusId, $user);
