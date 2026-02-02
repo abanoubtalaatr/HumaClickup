@@ -637,12 +637,12 @@ function kanbanBoard() {
                             onEnd: (evt) => {
                                 const taskId = evt.item.dataset.taskId;
                                 const newStatusId = evt.to.dataset.statusId;
-                                
-                                // Update task status via AJAX
-                                fetch('/tasks/' + taskId + '/status', {
+                                const updateStatusUrl = "{{ route('tasks.updateStatus', ['task' => 0]) }}".replace(/\/0\/status/, `/${taskId}/status`);
+                                fetch(updateStatusUrl, {
                                     method: 'POST',
                                     headers: {
                                         'Content-Type': 'application/json',
+                                        'Accept': 'application/json',
                                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                                     },
                                     body: JSON.stringify({
@@ -653,7 +653,6 @@ function kanbanBoard() {
                                 .then(response => response.json())
                                 .then(data => {
                                     if (!data.success) {
-                                        // Revert on error
                                         evt.from.insertBefore(evt.item, evt.from.children[evt.oldIndex]);
                                     }
                                 })
