@@ -479,6 +479,26 @@
 </div>
 
 @push('scripts')
+@php
+    $routeName = request()->route()->getName();
+    if ($routeName === 'project.tasks.kanban' && request()->route()->parameter('workspace') && request()->route()->parameter('project')) {
+        $workspace = request()->route()->parameter('workspace');
+        $projectParam = request()->route()->parameter('project');
+        $workspaceId = is_object($workspace) ? $workspace->id : $workspace;
+        $projectId = is_object($projectParam) ? $projectParam->id : $projectParam;
+        $updateStatusUrlTemplate = route('workspace.project.tasks.updateStatus', [
+            'workspace' => $workspaceId,
+            'project' => $projectId,
+            'task' => 0
+        ]);
+    } elseif ($routeName === 'projects.tasks.kanban' && request()->route()->parameter('project')) {
+        $projectParam = request()->route()->parameter('project');
+        $projectId = is_object($projectParam) ? $projectParam->id : $projectParam;
+        $updateStatusUrlTemplate = route('projects.tasks.updateStatus', ['project' => $projectId, 'taskId' => 0]);
+    } else {
+        $updateStatusUrlTemplate = route('tasks.updateStatus', ['task' => 0]);
+    }
+@endphp
 <script>
 function kanbanBoard() {
     return {
@@ -637,7 +657,7 @@ function kanbanBoard() {
                             onEnd: (evt) => {
                                 const taskId = evt.item.dataset.taskId;
                                 const newStatusId = evt.to.dataset.statusId;
-                                const updateStatusUrl = "{{ route('tasks.updateStatus', ['task' => 0]) }}".replace(/\/0\/status/, `/${taskId}/status`);
+                                const updateStatusUrl = "{{ $updateStatusUrlTemplate }}".replace(/\/0\/status/, `/${taskId}/status`);
                                 fetch(updateStatusUrl, {
                                     method: 'POST',
                                     headers: {

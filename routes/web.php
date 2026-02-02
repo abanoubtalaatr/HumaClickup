@@ -175,7 +175,7 @@ Route::middleware(['auth'])->group(function () {
          
             Route::get('/tasks/kanban', [TaskController::class, 'kanban'])->name('project.tasks.kanban');
             Route::get('/tasks/list', [TaskController::class, 'list'])->name('project.tasks.list');
-            Route::post('/tasks/{task}/status', [TaskController::class, 'updateStatus'])->name('tasks.updateStatus');
+            Route::post('/tasks/{task}/status', [TaskController::class, 'updateStatus'])->name('workspace.project.tasks.updateStatus');
             Route::post('/tasks/reorder', [TaskController::class, 'reorder'])->name('tasks.reorder');
             Route::resource('tasks', TaskController::class)->names([
                 'index' => 'project.tasks.index',
