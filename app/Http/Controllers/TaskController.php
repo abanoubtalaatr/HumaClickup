@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Task;
 use App\Models\Project;
-use App\Models\CustomStatus;
 use App\Models\User;
 use App\Services\TaskService;
 use Illuminate\Http\Request;
@@ -598,16 +597,7 @@ class TaskController extends Controller
             'position' => 'nullable|integer',
         ]);
 
-        $statusId = (int) $validated['status_id'];
-        $status = CustomStatus::find($statusId);
-        if (!$status || $status->project_id != $task->project_id) {
-            return response()->json([
-                'success' => false,
-                'message' => 'The selected status does not belong to this task\'s project.',
-            ], 422);
-        }
-
-        $this->taskService->moveToStatus($task, $statusId, $validated['position'] ?? null, auth()->user());
+        $this->taskService->moveToStatus($task, (int) $validated['status_id'], $validated['position'] ?? null, auth()->user());
 
         return response()->json(['success' => true]);
     }
