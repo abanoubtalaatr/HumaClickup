@@ -598,7 +598,16 @@ class TaskController extends Controller
             'position' => 'nullable|integer',
         ]);
 
-        $this->taskService->moveToStatus($task, $validated['status_id'], $validated['position'] ?? null, auth()->user());
+        $statusId = (int) $validated['status_id'];
+        $status = CustomStatus::find($statusId);
+        if (!$status || $status->project_id != $task->project_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'The selected status does not belong to this task\'s project.',
+            ], 422);
+        }
+
+        $this->taskService->moveToStatus($task, $statusId, $validated['position'] ?? null, auth()->user());
 
         return response()->json(['success' => true]);
     }

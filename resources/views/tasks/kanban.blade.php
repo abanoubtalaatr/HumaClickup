@@ -670,10 +670,15 @@ function kanbanBoard() {
                                         position: evt.newIndex
                                     })
                                 })
-                                .then(response => response.json())
-                                .then(data => {
-                                    if (!data.success) {
+                                .then(response => {
+                                    return response.json().then(data => ({ ok: response.ok, data }));
+                                })
+                                .then(({ ok, data }) => {
+                                    if (!ok || !data.success) {
                                         evt.from.insertBefore(evt.item, evt.from.children[evt.oldIndex]);
+                                        if (data.message) {
+                                            alert(data.message);
+                                        }
                                     }
                                 })
                                 .catch(error => {
