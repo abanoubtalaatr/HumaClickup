@@ -212,11 +212,14 @@ Route::middleware(['auth'])->group(function () {
                 ->firstOrFail();
         });
         
-        // Bind task to workspace scope
+        // Bind task to workspace scope (include tasks with null workspace_id so they can be moved on kanban)
         Route::bind('task', function ($value) {
             $workspaceId = session('current_workspace_id');
-            return \App\Models\Task::where('id', $value)
-                ->where('workspace_id', $workspaceId)
+            return \App\Models\Task::withoutGlobalScopes()
+                ->where('id', $value)
+                ->where(function ($q) use ($workspaceId) {
+                    $q->where('workspace_id', $workspaceId)->orWhereNull('workspace_id');
+                })
                 ->firstOrFail();
         });
         

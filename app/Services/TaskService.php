@@ -176,15 +176,18 @@ class TaskService
             // Handle status change logic
             $this->handleStatusChange($task, $statusId, $user);
 
-            // Log activity
-            $this->activityLogService->log(
-                $task->workspace_id,
-                $user->id,
-                'status_changed',
-                $task,
-                ['status_id' => $oldStatusId],
-                ['status_id' => $statusId]
-            );
+            // Log activity (use current workspace when task has no workspace_id)
+            $workspaceIdForLog = $task->workspace_id ?? session('current_workspace_id');
+            if ($workspaceIdForLog !== null) {
+                $this->activityLogService->log(
+                    $workspaceIdForLog,
+                    $user->id,
+                    'status_changed',
+                    $task,
+                    ['status_id' => $oldStatusId],
+                    ['status_id' => $statusId]
+                );
+            }
 
             // Update project progress only when task belongs to a project
             if ($task->project) {

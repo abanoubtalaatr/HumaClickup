@@ -178,9 +178,17 @@ class TaskController extends Controller
 
         // Load tasks for each status
         foreach ($statuses as $status) {
-            $taskQuery = Task::where('status_id', $status->id)
-                ->where('workspace_id', $workspaceId);
-            
+            $taskQuery = Task::where('status_id', $status->id);
+            // When no project selected, include tasks with null workspace_id (bypass scope so they appear and can be moved)
+            if ($project || $request->filled('project_id')) {
+                $taskQuery->where('workspace_id', $workspaceId);
+            } else {
+                $taskQuery->withoutGlobalScope('workspace')
+                    ->where(function ($q) use ($workspaceId) {
+                        $q->where('workspace_id', $workspaceId)->orWhereNull('workspace_id');
+                    });
+            }
+
             // Apply project filter
             if ($request->filled('project_id')) {
                 $taskQuery->where('project_id', $request->project_id);
