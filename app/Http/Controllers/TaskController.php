@@ -601,7 +601,7 @@ class TaskController extends Controller
         // $this->authorize('update', $task);
 
         $validated = $request->validate([
-            'status_id' => 'required|exists:custom_statuses,id',
+            'status_id' => 'required',
             'position' => 'nullable|integer',
         ]);
 
