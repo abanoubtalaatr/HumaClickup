@@ -157,7 +157,7 @@ class TaskService
      */
     public function moveToStatus(Task $task, int $statusId, ?int $position = null, User $user): Task
     {
-        return DB::transaction(function () use ($task, $statusId, $position, $user) {
+        // return DB::transaction(function () use ($task, $statusId, $position, $user) {
             $oldStatusId = $task->status_id;
             $positionValue = $position ?? ($task->project
                 ? $this->getNextPosition($task->project, $statusId)
@@ -195,7 +195,7 @@ class TaskService
             }
 
             return $task->fresh();
-        });
+        // });
     }
 
     /**
