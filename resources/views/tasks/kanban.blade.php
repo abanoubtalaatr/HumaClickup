@@ -656,42 +656,50 @@ function kanbanBoard() {
                             ghostClass: 'bg-blue-100',
                             onEnd: (evt) => {
                                 const taskId = evt.item.dataset.taskId;
-                                // Target status = the column the item was dropped into (use parent after drop, not evt.to, to avoid wrong value)
-                                const targetColumn = evt.item.parentElement;
-                                const newStatusIdRaw = (targetColumn && (targetColumn.getAttribute('data-status-id') || targetColumn.dataset.statusId)) || evt.to.dataset.statusId;
-                                const newStatusId = newStatusIdRaw ? parseInt(newStatusIdRaw, 10) : null;
-                                if (!newStatusId) {
-                                    evt.from.insertBefore(evt.item, evt.from.children[evt.oldIndex]);
-                                    return;
-                                }
-                                const updateStatusUrl = "{{ $updateStatusUrlTemplate }}".replace(/\/0\/status/, `/${taskId}/status`);
-                                fetch(updateStatusUrl, {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                        'Accept': 'application/json',
-                                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                                    },
-                                    body: JSON.stringify({
-                                        status_id: newStatusId,
-                                        position: evt.newIndex
-                                    })
-                                })
-                                .then(response => {
-                                    return response.json().then(data => ({ ok: response.ok, data }));
-                                })
-                                .then(({ ok, data }) => {
-                                    if (!ok || !data.success) {
-                                        evt.from.insertBefore(evt.item, evt.from.children[evt.oldIndex]);
-                                        if (data.message) {
-                                            alert(data.message);
-                                        }
+                                const fromList = evt.from;
+                                const toList = evt.to;
+                                const oldIndex = evt.oldIndex;
+                                const newIndex = evt.newIndex;
+                                // Defer so DOM is guaranteed updated; then read target status from the list the item now lives in
+                                setTimeout(() => {
+                                    const targetColumn = evt.item.parentElement && evt.item.parentElement.closest('[data-status-id]')
+                                        ? evt.item.parentElement.closest('[data-status-id]')
+                                        : toList;
+                                    const newStatusIdRaw = targetColumn && (targetColumn.getAttribute('data-status-id') || (targetColumn.dataset && targetColumn.dataset.statusId));
+                                    const newStatusId = newStatusIdRaw ? parseInt(newStatusIdRaw, 10) : null;
+                                    if (!newStatusId || isNaN(newStatusId)) {
+                                        fromList.insertBefore(evt.item, fromList.children[oldIndex] || null);
+                                        return;
                                     }
-                                })
-                                .catch(error => {
-                                    console.error('Error:', error);
-                                    evt.from.insertBefore(evt.item, evt.from.children[evt.oldIndex]);
-                                });
+                                    const updateStatusUrl = "{{ $updateStatusUrlTemplate }}".replace(/\/0\/status/, `/${taskId}/status`);
+                                    fetch(updateStatusUrl, {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'Accept': 'application/json',
+                                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                                        },
+                                        body: JSON.stringify({
+                                            status_id: newStatusId,
+                                            position: newIndex
+                                        })
+                                    })
+                                    .then(response => {
+                                        return response.json().then(data => ({ ok: response.ok, data }));
+                                    })
+                                    .then(({ ok, data }) => {
+                                        if (!ok || !data.success) {
+                                            fromList.insertBefore(evt.item, fromList.children[oldIndex] || null);
+                                            if (data.message) {
+                                                alert(data.message);
+                                            }
+                                        }
+                                    })
+                                    .catch(error => {
+                                        console.error('Error:', error);
+                                        fromList.insertBefore(evt.item, fromList.children[oldIndex] || null);
+                                    });
+                                }, 0);
                             }
                         });
                     }
