@@ -656,7 +656,14 @@ function kanbanBoard() {
                             ghostClass: 'bg-blue-100',
                             onEnd: (evt) => {
                                 const taskId = evt.item.dataset.taskId;
-                                const newStatusId = evt.to.dataset.statusId;
+                                // Target status = the column the item was dropped into (use parent after drop, not evt.to, to avoid wrong value)
+                                const targetColumn = evt.item.parentElement;
+                                const newStatusIdRaw = (targetColumn && (targetColumn.getAttribute('data-status-id') || targetColumn.dataset.statusId)) || evt.to.dataset.statusId;
+                                const newStatusId = newStatusIdRaw ? parseInt(newStatusIdRaw, 10) : null;
+                                if (!newStatusId) {
+                                    evt.from.insertBefore(evt.item, evt.from.children[evt.oldIndex]);
+                                    return;
+                                }
                                 const updateStatusUrl = "{{ $updateStatusUrlTemplate }}".replace(/\/0\/status/, `/${taskId}/status`);
                                 fetch(updateStatusUrl, {
                                     method: 'POST',
