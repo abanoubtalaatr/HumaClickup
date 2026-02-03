@@ -111,8 +111,8 @@ class TaskService
                 $task->fresh()->toArray()
             );
 
-            // Update project progress if status changed
-            if (isset($data['status_id'])) {
+            // Update project progress if status changed (only when task belongs to a project)
+            if (isset($data['status_id']) && $task->project) {
                 $task->project->calculateProgress();
             }
 
@@ -143,8 +143,10 @@ class TaskService
 
             $deleted = $task->delete();
 
-            // Update project progress
-            $task->project->calculateProgress();
+            // Update project progress only when task belonged to a project
+            if ($task->project) {
+                $task->project->calculateProgress();
+            }
 
             return $deleted;
         });
@@ -157,7 +159,9 @@ class TaskService
     {
         return DB::transaction(function () use ($task, $statusId, $position, $user) {
             $oldStatusId = $task->status_id;
-            $positionValue = $position ?? $this->getNextPosition($task->project, $statusId);
+            $positionValue = $position ?? ($task->project
+                ? $this->getNextPosition($task->project, $statusId)
+                : $this->getNextPositionForStatusWithoutProject($statusId));
 
             // Update by primary key only to avoid global scope affecting the update
             Task::withoutGlobalScopes()
@@ -182,8 +186,10 @@ class TaskService
                 ['status_id' => $statusId]
             );
 
-            // Update project progress
-            $task->project->calculateProgress();
+            // Update project progress only when task belongs to a project
+            if ($task->project) {
+                $task->project->calculateProgress();
+            }
 
             return $task->fresh();
         });
@@ -257,6 +263,19 @@ class TaskService
     protected function getNextPosition(Project $project, int $statusId): int
     {
         $maxPosition = Task::where('project_id', $project->id)
+            ->where('status_id', $statusId)
+            ->max('position') ?? 0;
+
+        return $maxPosition + 100;
+    }
+
+    /**
+     * Get next position for a task in a status when task has no project
+     */
+    protected function getNextPositionForStatusWithoutProject(int $statusId): int
+    {
+        $maxPosition = Task::withoutGlobalScopes()
+            ->whereNull('project_id')
             ->where('status_id', $statusId)
             ->max('position') ?? 0;
 
