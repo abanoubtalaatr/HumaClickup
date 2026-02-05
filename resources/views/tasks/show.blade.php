@@ -72,16 +72,16 @@
                             <div class="flex space-x-3">
                                 <div class="flex-shrink-0">
                                     <div class="h-8 w-8 rounded-full bg-indigo-500 flex items-center justify-center text-white text-sm">
-                                        {{ strtoupper(substr($comment->user->name, 0, 1)) }}
+                                        {{ strtoupper(substr($comment->user->name ?? '?', 0, 1)) }}
                                     </div>
                                 </div>
                                 <div class="flex-1">
                                     <div class="bg-gray-50 rounded-lg p-3">
                                         <div class="flex items-center justify-between mb-1">
-                                            <span class="text-sm font-medium text-gray-900">{{ $comment->user->name }}</span>
+                                            <span class="text-sm font-medium text-gray-900">{{ $comment->user->name ?? 'Unknown' }}</span>
                                             <span class="text-xs text-gray-500">{{ $comment->created_at->diffForHumans() }}</span>
                                         </div>
-                                        <p class="text-sm text-gray-700">{{ $comment->content }}</p>
+                                        <p class="text-sm text-gray-700 whitespace-pre-wrap">{{ $comment->content }}</p>
                                     </div>
                                 </div>
                             </div>
@@ -89,6 +89,19 @@
                             <p class="text-sm text-gray-500">No comments yet.</p>
                         @endforelse
                     </div>
+                    <form action="{{ route('tasks.comments.store', $task) }}" method="POST" class="mt-4">
+                        @csrf
+                        <label for="comment_content" class="block text-sm font-medium text-gray-700 mb-2">Add a comment</label>
+                        <textarea name="content" id="comment_content" rows="3" required
+                                  class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                                  placeholder="Write your comment..."></textarea>
+                        @error('content')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                        <button type="submit" class="mt-2 inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            Post comment
+                        </button>
+                    </form>
                 </div>
             </div>
 

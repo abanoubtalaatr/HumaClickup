@@ -14,6 +14,7 @@ use App\Http\Controllers\TaskEstimationController;
 use App\Http\Controllers\TopicController;
 use App\Http\Controllers\DailyStatusController;
 use App\Http\Controllers\TagController;
+use App\Http\Controllers\CommentController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -266,6 +267,7 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
         Route::delete('/tasks/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
         Route::post('/tasks/{task}/status', [TaskController::class, 'updateStatus'])->name('tasks.updateStatus');
+        Route::post('/tasks/{task}/comments', [CommentController::class, 'store'])->name('tasks.comments.store');
         
         // Bugs routes
         Route::get('/bugs', [TaskController::class, 'bugs'])->name('bugs.index');
