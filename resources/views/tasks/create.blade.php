@@ -3,7 +3,7 @@
 @section('title', 'Create Task')
 
 @section('content')
-<div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8" x-data="taskCreateForm()">
+<div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8" x-data="taskCreateForm()" data-tags-store-url="{{ route('tags.store') }}">
     <div class="py-6">
         <div class="mb-6">
             <h1 class="text-3xl font-bold text-gray-900" x-text="isBug ? 'Create New Bug' : 'Create New Task'"></h1>
@@ -11,7 +11,7 @@
         </div>
 
         <div class="bg-white shadow rounded-lg">
-            <form action="{{ $project ? route('projects.tasks.store', $project) : route('tasks.store') }}" method="POST" class="p-6">
+            <form action="{{ $project ? route('projects.tasks.store', $project) : route('tasks.store') }}" method="POST" class="p-6" enctype="multipart/form-data">
                 @csrf
 
                 <!-- Project Selection (if not already selected) -->
@@ -301,11 +301,10 @@
                 </div>
                 @endif
 
-                <!-- Tags -->
-                @if($tags && $tags->count() > 0)
-                <div class="mb-6" x-data="{ tagsOpen: false }">
+                <!-- Tags (optional - list always shown; members/admins can create new tags) -->
+                <div class="mb-6">
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                        Tags
+                        Tags <span class="text-gray-400 font-normal">(optional)</span>
                     </label>
                     <div class="relative">
                         <button type="button" @click="tagsOpen = !tagsOpen" 
@@ -320,25 +319,62 @@
                         </button>
                         <div x-show="tagsOpen" @click.away="tagsOpen = false" x-cloak
                              class="absolute z-10 mt-1 w-full bg-white dark:bg-gray-700 shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
-                            @foreach($tags as $tag)
-                            <label class="flex items-center px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer">
-                                <input type="checkbox" 
-                                       name="tag_ids[]" 
-                                       value="{{ $tag->id }}"
-                                       {{ in_array($tag->id, old('tag_ids', [])) ? 'checked' : '' }}
-                                       @change="updateSelectedTags()"
-                                       class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
-                                <span class="ml-3 text-sm text-gray-900 dark:text-gray-200">{{ $tag->name }}</span>
-                            </label>
-                            @endforeach
+                            <div id="tag-list-container">
+                                @forelse($tags ?? [] as $tag)
+                                <label class="flex items-center px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer">
+                                    <input type="checkbox" 
+                                           name="tag_ids[]" 
+                                           value="{{ $tag->id }}"
+                                           {{ in_array($tag->id, old('tag_ids', [])) ? 'checked' : '' }}
+                                           @change="updateSelectedTags()"
+                                           class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+                                    <span class="ml-3 text-sm text-gray-900 dark:text-gray-200">{{ $tag->name }}</span>
+                                </label>
+                                @empty
+                                <p class="px-3 py-2 text-sm text-gray-500">No tags yet. Create one below.</p>
+                                @endforelse
+                            </div>
+                            <div class="border-t border-gray-200 dark:border-gray-600 px-3 py-2 mt-1">
+                                <p class="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">Create new tag</p>
+                                <div class="flex gap-2 flex-wrap items-center">
+                                    <input type="text" 
+                                           x-model="newTagName" 
+                                           placeholder="Tag name"
+                                           class="flex-1 min-w-0 rounded border-gray-300 dark:border-gray-600 dark:bg-gray-600 dark:text-white py-1.5 text-sm">
+                                    <input type="color" 
+                                           x-model="newTagColor" 
+                                           class="h-8 w-12 rounded border border-gray-300 cursor-pointer">
+                                    <button type="button" 
+                                            @click="createTag()"
+                                            :disabled="!newTagName.trim() || creatingTag"
+                                            class="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                                        Add tag
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Click to select multiple tags</p>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Select existing tags or create new ones. Tags are optional.</p>
                     @error('tag_ids')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
                 </div>
-                @endif
+
+                <!-- Attachments -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Attach files <span class="text-gray-400 font-normal">(optional)</span>
+                    </label>
+                    <input type="file" 
+                           name="attachments[]" 
+                           multiple
+                           accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.png,.jpg,.jpeg,.gif,.zip"
+                           class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Max 10MB per file. You can select multiple files.</p>
+                    @error('attachments.*')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
 
                 <!-- Submit Buttons -->
                 <div class="flex items-center justify-end space-x-3">
@@ -364,7 +400,11 @@ function taskCreateForm() {
         selectedAssignees: [],
         selectedTags: [],
         isBug: false,
-        
+        tagsOpen: false,
+        newTagName: '',
+        newTagColor: '#6366f1',
+        creatingTag: false,
+
         init() {
             // Initialize Quill editor for description
             if (typeof Quill !== 'undefined') {
@@ -440,6 +480,42 @@ function taskCreateForm() {
             this.selectedTags = Array.from(
                 document.querySelectorAll('input[name="tag_ids[]"]:checked')
             ).map(checkbox => checkbox.value);
+        },
+
+        async createTag() {
+            const name = (this.newTagName && this.newTagName.trim()) || '';
+            if (!name) return;
+            const wrap = document.getElementById('tag-list-container');
+            this.creatingTag = true;
+            try {
+                const formData = new FormData();
+                formData.append('_token', document.querySelector('meta[name="csrf-token"]').content);
+                formData.append('name', name);
+                formData.append('color', this.newTagColor || '#6366f1');
+                const url = document.querySelector('[data-tags-store-url]').dataset.tagsStoreUrl;
+                const res = await fetch(url, { method: 'POST', body: formData, headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } });
+                const data = await res.json();
+                if (data.success && data.tag) {
+                    const noTagsMsg = wrap.querySelector('p.text-gray-500');
+                    if (noTagsMsg) noTagsMsg.remove();
+                    const label = document.createElement('label');
+                    label.className = 'flex items-center px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-600 cursor-pointer';
+                    const tagName = (data.tag.name || name).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    label.innerHTML = '<input type="checkbox" name="tag_ids[]" value="' + data.tag.id + '" class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"> <span class="ml-3 text-sm text-gray-900 dark:text-gray-200">' + tagName + '</span>';
+                    wrap.appendChild(label);
+                    label.querySelector('input').checked = true;
+                    label.querySelector('input').addEventListener('change', () => this.updateSelectedTags());
+                    this.newTagName = '';
+                    this.newTagColor = '#6366f1';
+                    this.updateSelectedTags();
+                } else {
+                    alert(data.message || 'Could not create tag.');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Could not create tag. Please try again.');
+            }
+            this.creatingTag = false;
         }
     }
 }

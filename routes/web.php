@@ -13,6 +13,7 @@ use App\Http\Controllers\TrackController;
 use App\Http\Controllers\TaskEstimationController;
 use App\Http\Controllers\TopicController;
 use App\Http\Controllers\DailyStatusController;
+use App\Http\Controllers\TagController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -278,6 +279,9 @@ Route::middleware(['auth'])->group(function () {
         
         // API endpoint for getting assignable users (used in task creation)
         Route::get('/api/assignable-users', [TaskController::class, 'getAssignableUsers'])->name('api.assignable-users');
+
+        // Tags (members and admins can create tags)
+        Route::post('/tags', [TagController::class, 'store'])->name('tags.store');
         
         // Standalone project-scoped task routes (uses session workspace)
         Route::prefix('projects/{project}')->group(function () {

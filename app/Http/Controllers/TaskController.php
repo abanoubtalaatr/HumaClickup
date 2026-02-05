@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Task;
 use App\Models\Project;
 use App\Models\User;
+use App\Models\Attachment;
 use App\Services\TaskService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class TaskController extends Controller
 {
@@ -381,6 +383,8 @@ class TaskController extends Controller
             'assignee_ids.*' => 'exists:users,id',
             'tag_ids' => 'nullable|array',
             'tag_ids.*' => 'exists:tags,id',
+            'attachments' => 'nullable|array',
+            'attachments.*' => 'file|max:10240', // 10MB per file
         ]);
 
         $project = $project ?? Project::find($validated['project_id']);
@@ -412,6 +416,27 @@ class TaskController extends Controller
         }
 
         $task = $this->taskService->create($validated, auth()->user(), $project);
+
+        // Attach uploaded files to the task
+        if ($request->hasFile('attachments')) {
+            foreach ($request->file('attachments') as $file) {
+                $path = $file->store(
+                    sprintf('attachments/workspace_%s/task_%s', $workspaceId, $task->id),
+                    'local'
+                );
+                Attachment::create([
+                    'attachable_type' => Task::class,
+                    'attachable_id' => $task->id,
+                    'user_id' => $user->id,
+                    'filename' => basename($path),
+                    'original_filename' => $file->getClientOriginalName(),
+                    'size' => $file->getSize(),
+                    'mime_type' => $file->getMimeType(),
+                    'disk' => 'local',
+                    'path' => $path,
+                ]);
+            }
+        }
 
         // Return JSON if requested via AJAX
         if ($request->expectsJson() || $request->wantsJson()) {
