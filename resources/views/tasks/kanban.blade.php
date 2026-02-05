@@ -660,41 +660,52 @@ function kanbanBoard() {
                                 const toList = evt.to;
                                 const oldIndex = evt.oldIndex;
                                 const newIndex = evt.newIndex;
-                                // Use toList (the drop target) directly for status_id - no setTimeout, works everywhere
-                                const toStatusIdRaw = toList && (toList.getAttribute('data-status-id') || (toList.dataset && toList.dataset.statusId));
-                                const newStatusId = toStatusIdRaw ? parseInt(toStatusIdRaw, 10) : null;
-                                if (!newStatusId || isNaN(newStatusId)) {
-                                    fromList.insertBefore(evt.item, fromList.children[oldIndex] || null);
-                                    return;
+                                function getStatusIdFromEl(el) {
+                                    if (!el) return null;
+                                    var raw = el.getAttribute && el.getAttribute('data-status-id');
+                                    if (raw) return parseInt(raw, 10);
+                                    var parent = el.closest && el.closest('[data-status-id]');
+                                    return parent ? parseInt(parent.getAttribute('data-status-id'), 10) : null;
                                 }
-                                const updateStatusUrl = "{{ $updateStatusUrlTemplate }}".replace(/\/0\/status/, `/${taskId}/status`);
-                                fetch(updateStatusUrl, {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                        'Accept': 'application/json',
-                                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                                    },
-                                    body: JSON.stringify({
-                                        status_id: newStatusId,
-                                        position: newIndex
-                                    })
-                                })
-                                .then(response => {
-                                    return response.json().then(data => ({ ok: response.ok, data }));
-                                })
-                                .then(({ ok, data }) => {
-                                    if (!ok || !data.success) {
+                                function doUpdate(newStatusId) {
+                                    if (!newStatusId || isNaN(newStatusId)) {
                                         fromList.insertBefore(evt.item, fromList.children[oldIndex] || null);
-                                        if (data.message) {
-                                            alert(data.message);
-                                        }
+                                        return;
                                     }
-                                })
-                                .catch(error => {
-                                    console.error('Error:', error);
-                                    fromList.insertBefore(evt.item, fromList.children[oldIndex] || null);
-                                });
+                                    var updateStatusUrl = "{{ $updateStatusUrlTemplate }}".replace(/\/0\/status/, '/' + taskId + '/status');
+                                    fetch(updateStatusUrl, {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'Accept': 'application/json',
+                                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                                        },
+                                        body: JSON.stringify({ status_id: newStatusId, position: newIndex })
+                                    })
+                                    .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+                                    .then(function(_ref) {
+                                        if (!_ref.ok || !_ref.data.success) {
+                                            fromList.insertBefore(evt.item, fromList.children[oldIndex] || null);
+                                            if (_ref.data.message) alert(_ref.data.message);
+                                        }
+                                    })
+                                    .catch(function(err) {
+                                        console.error('Error:', err);
+                                        fromList.insertBefore(evt.item, fromList.children[oldIndex] || null);
+                                    });
+                                }
+                                // Read target from DOM after layout (where item actually ended up) - works on server and local
+                                function readAndSend() {
+                                    var targetColumn = evt.item.parentElement;
+                                    var newStatusId = getStatusIdFromEl(targetColumn);
+                                    if (!newStatusId && toList) newStatusId = getStatusIdFromEl(toList);
+                                    doUpdate(newStatusId);
+                                }
+                                if (typeof requestAnimationFrame !== 'undefined') {
+                                    requestAnimationFrame(readAndSend);
+                                } else {
+                                    setTimeout(readAndSend, 0);
+                                }
                             }
                         });
                     }
