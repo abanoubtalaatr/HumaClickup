@@ -158,8 +158,11 @@ class DailyStatusController extends Controller
         $workspaceId = session('current_workspace_id');
         $user = auth()->user();
 
-        // Check access - users can only see their own statuses
-        if ($dailyStatus->workspace_id != $workspaceId || $dailyStatus->user_id != $user->id) {
+        if ($dailyStatus->workspace_id != $workspaceId) {
+            abort(404);
+        }
+        // Owner can view any; others only their own
+        if (!$user->isOwnerInWorkspace($workspaceId) && $dailyStatus->user_id != $user->id) {
             abort(403, 'You can only view your own daily statuses.');
         }
 
