@@ -44,7 +44,7 @@ class DailyStatusController extends Controller
 
         $statuses = $query->with('user')
             ->orderBy('date', 'desc')
-            ->orderBy('created_at', 'desc')
+            ->orderBy('created_at', 'asc')
             ->get();
 
         // Get today's status if exists (current user's)
