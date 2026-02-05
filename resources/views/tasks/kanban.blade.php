@@ -660,46 +660,41 @@ function kanbanBoard() {
                                 const toList = evt.to;
                                 const oldIndex = evt.oldIndex;
                                 const newIndex = evt.newIndex;
-                                // Defer so DOM is guaranteed updated; then read target status from the list the item now lives in
-                                setTimeout(() => {
-                                    const targetColumn = evt.item.parentElement && evt.item.parentElement.closest('[data-status-id]')
-                                        ? evt.item.parentElement.closest('[data-status-id]')
-                                        : toList;
-                                    const newStatusIdRaw = targetColumn && (targetColumn.getAttribute('data-status-id') || (targetColumn.dataset && targetColumn.dataset.statusId));
-                                    const newStatusId = newStatusIdRaw ? parseInt(newStatusIdRaw, 10) : null;
-                                    if (!newStatusId || isNaN(newStatusId)) {
+                                // Use toList (the drop target) directly for status_id - no setTimeout, works everywhere
+                                const toStatusIdRaw = toList && (toList.getAttribute('data-status-id') || (toList.dataset && toList.dataset.statusId));
+                                const newStatusId = toStatusIdRaw ? parseInt(toStatusIdRaw, 10) : null;
+                                if (!newStatusId || isNaN(newStatusId)) {
+                                    fromList.insertBefore(evt.item, fromList.children[oldIndex] || null);
+                                    return;
+                                }
+                                const updateStatusUrl = "{{ $updateStatusUrlTemplate }}".replace(/\/0\/status/, `/${taskId}/status`);
+                                fetch(updateStatusUrl, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Accept': 'application/json',
+                                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                                    },
+                                    body: JSON.stringify({
+                                        status_id: newStatusId,
+                                        position: newIndex
+                                    })
+                                })
+                                .then(response => {
+                                    return response.json().then(data => ({ ok: response.ok, data }));
+                                })
+                                .then(({ ok, data }) => {
+                                    if (!ok || !data.success) {
                                         fromList.insertBefore(evt.item, fromList.children[oldIndex] || null);
-                                        return;
-                                    }
-                                    const updateStatusUrl = "{{ $updateStatusUrlTemplate }}".replace(/\/0\/status/, `/${taskId}/status`);
-                                    fetch(updateStatusUrl, {
-                                        method: 'POST',
-                                        headers: {
-                                            'Content-Type': 'application/json',
-                                            'Accept': 'application/json',
-                                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                                        },
-                                        body: JSON.stringify({
-                                            status_id: newStatusId,
-                                            position: newIndex
-                                        })
-                                    })
-                                    .then(response => {
-                                        return response.json().then(data => ({ ok: response.ok, data }));
-                                    })
-                                    .then(({ ok, data }) => {
-                                        if (!ok || !data.success) {
-                                            fromList.insertBefore(evt.item, fromList.children[oldIndex] || null);
-                                            if (data.message) {
-                                                alert(data.message);
-                                            }
+                                        if (data.message) {
+                                            alert(data.message);
                                         }
-                                    })
-                                    .catch(error => {
-                                        console.error('Error:', error);
-                                        fromList.insertBefore(evt.item, fromList.children[oldIndex] || null);
-                                    });
-                                }, 0);
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('Error:', error);
+                                    fromList.insertBefore(evt.item, fromList.children[oldIndex] || null);
+                                });
                             }
                         });
                     }
