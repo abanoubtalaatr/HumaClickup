@@ -655,57 +655,50 @@ function kanbanBoard() {
                             animation: 150,
                             ghostClass: 'bg-blue-100',
                             onEnd: (evt) => {
-                                const taskId = evt.item.dataset.taskId;
-                                const fromList = evt.from;
-                                const toList = evt.to;
-                                const oldIndex = evt.oldIndex;
-                                const newIndex = evt.newIndex;
-                                function getStatusIdFromEl(el) {
-                                    if (!el) return null;
-                                    var raw = el.getAttribute && el.getAttribute('data-status-id');
-                                    if (raw) return parseInt(raw, 10);
-                                    var parent = el.closest && el.closest('[data-status-id]');
-                                    return parent ? parseInt(parent.getAttribute('data-status-id'), 10) : null;
-                                }
-                                function doUpdate(newStatusId) {
-                                    if (!newStatusId || isNaN(newStatusId)) {
-                                        fromList.insertBefore(evt.item, fromList.children[oldIndex] || null);
-                                        return;
+                                // Capture everything immediately so rapid drags don't reuse evt
+                                var item = evt.item;
+                                var taskId = item.dataset.taskId;
+                                var fromList = evt.from;
+                                var oldIndex = evt.oldIndex;
+                                var newIndex = evt.newIndex;
+                                // Find which column contains this item (no evt.to, no timing)
+                                var columns = document.querySelectorAll('.kanban-column');
+                                var targetColumn = null;
+                                for (var c = 0; c < columns.length; c++) {
+                                    if (columns[c].contains(item)) {
+                                        targetColumn = columns[c];
+                                        break;
                                     }
-                                    var updateStatusUrl = "{{ $updateStatusUrlTemplate }}".replace(/\/0\/status/, '/' + taskId + '/status');
-                                    fetch(updateStatusUrl, {
-                                        method: 'POST',
-                                        headers: {
-                                            'Content-Type': 'application/json',
-                                            'Accept': 'application/json',
-                                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                                        },
-                                        body: JSON.stringify({ status_id: newStatusId, position: newIndex })
-                                    })
-                                    .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
-                                    .then(function(_ref) {
-                                        if (!_ref.ok || !_ref.data.success) {
-                                            fromList.insertBefore(evt.item, fromList.children[oldIndex] || null);
-                                            if (_ref.data.message) alert(_ref.data.message);
-                                        }
-                                    })
-                                    .catch(function(err) {
-                                        console.error('Error:', err);
-                                        fromList.insertBefore(evt.item, fromList.children[oldIndex] || null);
-                                    });
                                 }
-                                // Read target from DOM after layout (where item actually ended up) - works on server and local
-                                function readAndSend() {
-                                    var targetColumn = evt.item.parentElement;
-                                    var newStatusId = getStatusIdFromEl(targetColumn);
-                                    if (!newStatusId && toList) newStatusId = getStatusIdFromEl(toList);
-                                    doUpdate(newStatusId);
+                                var raw = targetColumn ? (targetColumn.getAttribute('data-status-id') || (targetColumn.dataset && targetColumn.dataset.statusId)) : null;
+                                var newStatusId = raw ? parseInt(raw, 10) : null;
+                                if (!newStatusId || isNaN(newStatusId)) {
+                                    fromList.insertBefore(item, fromList.children[oldIndex] || null);
+                                    return;
                                 }
-                                if (typeof requestAnimationFrame !== 'undefined') {
-                                    requestAnimationFrame(readAndSend);
-                                } else {
-                                    setTimeout(readAndSend, 0);
-                                }
+                                var updateStatusUrl = "{{ $updateStatusUrlTemplate }}".replace(/\/0\/status/, '/' + taskId + '/status');
+                                var csrfEl = document.querySelector('meta[name="csrf-token"]');
+                                var payload = JSON.stringify({ status_id: newStatusId, position: newIndex });
+                                fetch(updateStatusUrl, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        'Accept': 'application/json',
+                                        'X-CSRF-TOKEN': csrfEl ? csrfEl.getAttribute('content') : ''
+                                    },
+                                    body: payload
+                                })
+                                .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+                                .then(function(res) {
+                                    if (!res.ok || !res.data.success) {
+                                        fromList.insertBefore(item, fromList.children[oldIndex] || null);
+                                        if (res.data.message) alert(res.data.message);
+                                    }
+                                })
+                                .catch(function(err) {
+                                    console.error('Error:', err);
+                                    fromList.insertBefore(item, fromList.children[oldIndex] || null);
+                                });
                             }
                         });
                     }

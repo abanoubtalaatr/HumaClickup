@@ -21,10 +21,13 @@ class DailyStatusController extends Controller
         }
 
         $isGuest = $user->isGuestInWorkspace($workspaceId);
+        $isOwner = $user->isOwnerInWorkspace($workspaceId);
 
-        // Build query - users can only see their own statuses
-        $query = DailyStatus::where('workspace_id', $workspaceId)
-            ->where('user_id', $user->id);
+        // Owner sees all statuses in the workspace; others see only their own
+        $query = DailyStatus::where('workspace_id', $workspaceId);
+        if (!$isOwner) {
+            $query->where('user_id', $user->id);
+        }
 
         // Filter by date if provided
         if ($request->filled('date')) {
@@ -39,11 +42,12 @@ class DailyStatusController extends Controller
             $query->where('date', '<=', $request->date_to);
         }
 
-        $statuses = $query->orderBy('date', 'desc')
+        $statuses = $query->with('user')
+            ->orderBy('date', 'desc')
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // Get today's status if exists
+        // Get today's status if exists (current user's)
         $todayStatus = DailyStatus::where('workspace_id', $workspaceId)
             ->where('user_id', $user->id)
             ->where('date', today())
@@ -52,7 +56,7 @@ class DailyStatusController extends Controller
         // Get tomorrow's date
         $tomorrow = today()->addDay();
 
-        return view('daily-statuses.index', compact('statuses', 'todayStatus', 'tomorrow', 'isGuest'));
+        return view('daily-statuses.index', compact('statuses', 'todayStatus', 'tomorrow', 'isGuest', 'isOwner'));
     }
 
     /**

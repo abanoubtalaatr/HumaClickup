@@ -253,7 +253,13 @@ class TaskController extends Controller
                 ->get();
         }
 
-        return view('tasks.kanban', compact('statuses', 'project', 'projects', 'assignees', 'tags', 'users', 'sprints', 'isGuest','tester', 'tasks'));
+        return response()
+            ->view('tasks.kanban', compact('statuses', 'project', 'projects', 'assignees', 'tags', 'users', 'sprints', 'isGuest', 'tester', 'tasks'))
+            ->withHeaders([
+                'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0',
+                'Pragma' => 'no-cache',
+                'Expires' => '0',
+            ]);
     }
 
     /**
