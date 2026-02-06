@@ -22,12 +22,11 @@ return new class extends Migration
             $table->decimal('bug_time_allocation_percentage', 5, 2)->default(20)->after('min_task_hours')->comment('Max percentage of main task time for bugs');
             $table->decimal('weekly_hours_target', 5, 2)->default(30)->after('bug_time_allocation_percentage')->comment('Target hours per week per member');
             $table->boolean('tasks_requirement_met')->default(false)->after('weekly_hours_target')->comment('Whether required tasks count is met');
-            $table->date('start_date')->nullable()->after('tasks_requirement_met');
-            $table->date('end_date')->nullable()->after('start_date');
+            // Note: start_date already exists from 2026_01_09_102424_add_due_date_to_projects_table.php
+            $table->date('end_date')->nullable()->after('due_date');
             
             $table->index('group_id');
             $table->index('tasks_requirement_met');
-            $table->index(['start_date', 'end_date']);
         });
     }
 
@@ -40,7 +39,6 @@ return new class extends Migration
             $table->dropForeign(['group_id']);
             $table->dropIndex(['group_id']);
             $table->dropIndex(['tasks_requirement_met']);
-            $table->dropIndex(['start_date', 'end_date']);
             $table->dropColumn([
                 'group_id', 
                 'total_days', 
@@ -52,7 +50,6 @@ return new class extends Migration
                 'bug_time_allocation_percentage',
                 'weekly_hours_target',
                 'tasks_requirement_met',
-                'start_date',
                 'end_date'
             ]);
         });
