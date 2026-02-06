@@ -3,34 +3,47 @@
 @section('title', 'Create Project - Step by Step')
 
 @section('content')
-<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6" x-data="projectWizard()">
-    <!-- Progress Steps -->
+<div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" x-data="projectWizard()"  x-init="init()">
+    <!-- Enhanced Progress Steps -->
     <div class="mb-8">
         <nav aria-label="Progress">
-            <ol class="flex items-center">
+            <ol class="flex items-center justify-between">
                 <template x-for="(step, index) in steps" :key="index">
-                    <li class="relative" :class="index < steps.length - 1 ? 'pr-8 sm:pr-20 flex-1' : ''">
-                        <div class="flex items-center">
-                            <div class="relative flex items-center justify-center">
-                                <div class="h-10 w-10 rounded-full flex items-center justify-center"
+                    <li class="relative flex-1" :class="index < steps.length - 1 ? 'pr-8 sm:pr-20' : ''">
+                        <div class="flex flex-col items-center">
+                            <!-- Step Circle -->
+                            <div class="relative flex items-center justify-center mb-2">
+                                <div class="h-12 w-12 rounded-full flex items-center justify-center shadow-lg transition-all duration-300"
                                      :class="{
-                                         'bg-indigo-600 text-white': currentStep >= index + 1,
+                                         'bg-gradient-to-r from-indigo-600 to-purple-600 text-white scale-110': currentStep === index + 1,
+                                         'bg-indigo-600 text-white': currentStep > index + 1,
                                          'bg-gray-200 text-gray-500': currentStep < index + 1
                                      }">
-                                    <span x-text="index + 1"></span>
+                                    <!-- Checkmark for completed steps -->
+                                    <svg x-show="currentStep > index + 1" class="h-6 w-6" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                    </svg>
+                                    <!-- Number for current/future steps -->
+                                    <span x-show="currentStep <= index + 1" class="font-bold" x-text="index + 1"></span>
                                 </div>
                             </div>
-                            <span class="ml-3 text-sm font-medium"
+                            
+                            <!-- Step Label -->
+                            <span class="text-sm font-medium text-center transition-colors duration-300"
                                   :class="{
-                                      'text-indigo-600': currentStep >= index + 1,
+                                      'text-indigo-600 font-semibold': currentStep === index + 1,
+                                      'text-indigo-600': currentStep > index + 1,
                                       'text-gray-500': currentStep < index + 1
                                   }"
                                   x-text="step.title"></span>
                         </div>
+                        
+                        <!-- Connector Line -->
                         <div x-show="index < steps.length - 1" 
-                             class="absolute top-5 left-5 w-full h-0.5"
+                             class="absolute top-6 left-1/2 w-full h-1 rounded-full transition-all duration-300"
                              :class="{
-                                 'bg-indigo-600': currentStep > index + 1,
+                                 'bg-gradient-to-r from-indigo-600 to-purple-600': currentStep > index + 1,
                                  'bg-gray-200': currentStep <= index + 1
                              }"></div>
                     </li>
@@ -41,42 +54,70 @@
 
     <form @submit.prevent="submitForm">
         <!-- Step 1: Project Info -->
-        <div x-show="currentStep === 1" class="bg-white shadow rounded-lg p-6 space-y-6">
-            <h2 class="text-2xl font-bold text-gray-900 mb-4">Project Information</h2>
+        <div x-show="currentStep === 1" 
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 transform translate-y-4"
+             x-transition:enter-end="opacity-100 transform translate-y-0"
+             class="bg-white shadow-xl rounded-2xl p-8 border border-gray-200">
+            <div class="mb-6">
+                <h2 class="text-3xl font-bold text-gray-900 mb-2">📋 Project Information</h2>
+                <p class="text-gray-600">Set up your project basics and select team members</p>
+            </div>
             
             @include('projects.wizard.step1-info')
         </div>
 
         <!-- Step 2: Task Planning Grid -->
-        <div x-show="currentStep === 2" class="bg-white shadow rounded-lg p-6">
-            <h2 class="text-2xl font-bold text-gray-900 mb-4">Main Tasks Planning</h2>
-            <p class="text-sm text-gray-600 mb-6">
-                Create <strong x-text="requiredTasks"></strong> main tasks 
-                (<strong x-text="selectedMembers.length"></strong> guests × <strong x-text="workingDays"></strong> working days)
-            </p>
+        <div x-show="currentStep === 2" 
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 transform translate-y-4"
+             x-transition:enter-end="opacity-100 transform translate-y-0"
+             class="bg-white shadow-xl rounded-2xl p-8 border border-gray-200">
+            <div class="mb-6">
+                <h2 class="text-3xl font-bold text-gray-900 mb-2">📝 Main Tasks Planning</h2>
+                <p class="text-gray-600 mb-1">
+                    Plan all <strong class="text-indigo-600" x-text="requiredTasks"></strong> main tasks for your project
+                </p>
+                <p class="text-sm text-gray-500">
+                    <strong x-text="selectedMembers.length"></strong> guests × <strong x-text="workingDays"></strong> working days = <strong x-text="requiredTasks"></strong> tasks
+                </p>
+            </div>
             
             @include('projects.wizard.step2-tasks')
         </div>
 
         <!-- Step 3: Review & Submit -->
-        <div x-show="currentStep === 3" class="bg-white shadow rounded-lg p-6">
-            <h2 class="text-2xl font-bold text-gray-900 mb-4">Review & Create Project</h2>
+        <div x-show="currentStep === 3" 
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0 transform translate-y-4"
+             x-transition:enter-end="opacity-100 transform translate-y-0"
+             class="bg-white shadow-xl rounded-2xl p-8 border border-gray-200">
+            <div class="mb-6">
+                <h2 class="text-3xl font-bold text-gray-900 mb-2">✅ Review & Create Project</h2>
+                <p class="text-gray-600">Final review before creating your project</p>
+            </div>
             
             @include('projects.wizard.step3-review')
         </div>
 
-        <!-- Navigation Buttons -->
-        <div class="mt-6 flex justify-between">
+        <!-- Enhanced Navigation Buttons -->
+        <div class="mt-8 flex justify-between items-center bg-white rounded-xl shadow-lg border border-gray-200 p-4">
             <button type="button"
                     x-show="currentStep > 1"
                     @click="previousStep()"
-                    class="px-6 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-                ← Previous
+                    class="inline-flex items-center px-6 py-3 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200 hover:shadow-md">
+                <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                </svg>
+                Previous
             </button>
             
             <div class="flex space-x-3 ml-auto">
                 <a href="{{ route('projects.index') }}"
-                   class="px-6 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                   class="inline-flex items-center px-6 py-3 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-all duration-200">
+                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
                     Cancel
                 </a>
                 
@@ -84,20 +125,30 @@
                         x-show="currentStep < 3"
                         @click="nextStep()"
                         :disabled="!canProceed()"
-                        class="px-6 py-2 rounded-md shadow-sm text-sm font-medium text-white"
-                        :class="canProceed() ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-gray-400 cursor-not-allowed'">
-                    Next →
+                        class="inline-flex items-center px-8 py-3 rounded-lg text-sm font-medium text-white transition-all duration-200 shadow-md"
+                        :class="canProceed() ? 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 hover:shadow-lg' : 'bg-gray-400 cursor-not-allowed'">
+                    Next
+                    <svg class="h-5 w-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
                 </button>
                 
                 <button type="submit"
                         x-show="currentStep === 3"
-                        class="px-6 py-2 bg-green-600 hover:bg-green-700 rounded-md shadow-sm text-sm font-medium text-white">
+                        class="inline-flex items-center px-8 py-3 rounded-lg text-sm font-medium text-white bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 transition-all duration-200 shadow-md hover:shadow-lg">
+                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
                     Create Project
                 </button>
             </div>
         </div>
     </form>
 </div>
+</div>
+
+<!-- Alpine Collapse Plugin for smooth animations -->
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/collapse@3.x.x/dist/cdn.min.js"></script>
 
 <script>
 function projectWizard() {
@@ -122,6 +173,8 @@ function projectWizard() {
         
         // Step 2 data
         mainTasks: [],
+        expandedGuests: {},
+        expandedSubtasks: {},
         
         get workingDays() {
             // Estimate: 5/7 of total days if weekends excluded
@@ -167,14 +220,20 @@ function projectWizard() {
         
         generateMainTasks() {
             this.mainTasks = [];
+            this.expandedGuests = {};
+            this.expandedSubtasks = {};
             let taskId = 1;
             
             // For each guest
             this.selectedMembers.forEach((member, memberIndex) => {
+                // Initialize guest as collapsed (false = expanded, true = collapsed)
+                this.expandedGuests[member.user_id] = false;
+                
                 // For each working day
                 for (let day = 0; day < this.workingDays; day++) {
+                    const currentTaskId = taskId++;
                     this.mainTasks.push({
-                        id: taskId++,
+                        id: currentTaskId,
                         guest_user_id: member.user_id,
                         guest_name: member.name,
                         track_id: member.track_id,
@@ -184,8 +243,18 @@ function projectWizard() {
                         estimated_hours: 6,
                         subtasks: []
                     });
+                    // Initialize subtasks as collapsed
+                    this.expandedSubtasks[currentTaskId] = true;
                 }
             });
+        },
+        
+        toggleGuestSection(guestUserId) {
+            this.expandedGuests[guestUserId] = !this.expandedGuests[guestUserId];
+        },
+        
+        toggleSubtasks(taskId) {
+            this.expandedSubtasks[taskId] = !this.expandedSubtasks[taskId];
         },
         
         addSubtask(mainTaskId) {
