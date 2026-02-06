@@ -34,7 +34,7 @@
                   ($progressPercentage >= 25 ? '⚡ Keep Going' : '🌱 Getting Started')));
 @endphp
 
-<div class="bg-gradient-to-br from-purple-600 via-indigo-600 to-blue-600 shadow-2xl border-b-4 border-purple-700">
+<div style="background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 50%, #2563eb 100%);" class="shadow-2xl border-b-4 border-purple-700">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="py-4">
             <div class="flex items-center justify-between">
@@ -95,10 +95,12 @@
                             <div class="flex-1 bg-white bg-opacity-20 backdrop-blur-sm rounded-full h-4 shadow-inner border-2 border-white border-opacity-30 overflow-hidden">
                                 <div class="relative h-full">
                                     <!-- Animated gradient progress -->
-                                    <div class="absolute inset-0 bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 rounded-full transition-all duration-1000 ease-out shadow-xl"
-                                         style="width: {{ $progressPercentage > 0 ? $progressPercentage : 2 }}%; box-shadow: 0 0 20px rgba(74, 222, 128, 0.7), inset 0 2px 4px rgba(255,255,255,0.3);">
+                                    <div class="absolute inset-0 rounded-full transition-all duration-1000 ease-out"
+                                         style="width: {{ $progressPercentage > 0 ? $progressPercentage : 2 }}%; 
+                                                background: linear-gradient(90deg, #4ade80 0%, #22c55e 50%, #16a34a 100%);
+                                                box-shadow: 0 0 20px rgba(74, 222, 128, 0.7), inset 0 2px 4px rgba(255,255,255,0.3);">
                                         <!-- Shine effect -->
-                                        <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-30 animate-shimmer"></div>
+                                        <div class="absolute inset-0 opacity-30 animate-shimmer" style="background: linear-gradient(90deg, transparent 0%, white 50%, transparent 100%);"></div>
                                     </div>
                                 </div>
                             </div>
@@ -108,12 +110,12 @@
                                 <svg class="h-5 w-5 text-yellow-300" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
                                 </svg>
-                                <div class="flex items-baseline space-x-1">
-                                    <span class="text-lg font-black text-white">{{ number_format($totalCompletedHours, 1) }}</span>
-                                    <span class="text-sm font-bold text-white opacity-80">/</span>
-                                    <span class="text-lg font-black text-white">{{ $targetHours }}</span>
-                                    <span class="text-sm font-bold text-yellow-300">hours</span>
-                                </div>
+                                {{-- <div class="flex items-baseline space-x-1"> --}}
+                                    {{-- <span class="text-lg font-black text-white">{{ number_format($totalCompletedHours, 1) }}</span> --}}
+                                    {{-- <span class="text-sm font-bold text-white opacity-80">/</span> --}}
+                                    {{-- <span class="text-lg font-black text-white">{{ $targetHours }}</span> --}}
+                                    {{-- <span class="text-sm font-bold text-yellow-300">hours</span> --}}
+                                {{-- </div> --}}
                             </div>
                         </div>
                     </div>
@@ -121,7 +123,8 @@
                 
                 <!-- Right: Action Button -->
                 <a href="{{ route('guests.progress') }}" 
-                   class="flex-shrink-0 inline-flex items-center px-6 py-3 bg-gradient-to-r from-yellow-400 to-orange-400 text-purple-900 rounded-xl text-base font-black hover:from-yellow-300 hover:to-orange-300 shadow-xl hover:shadow-2xl transition-all transform hover:scale-105 hover:-translate-y-0.5 border-2 border-yellow-300">
+                   style="background: linear-gradient(90deg, #facc15 0%, #f59e0b 100%);"
+                   class="flex-shrink-0 inline-flex items-center px-6 py-3 text-purple-900 rounded-xl text-base font-black shadow-xl hover:shadow-2xl transition-all transform hover:scale-105 hover:-translate-y-0.5 border-2 border-yellow-300">
                     <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
                     </svg>
