@@ -296,7 +296,8 @@ Route::middleware(['auth'])->group(function () {
         // Standalone project-scoped task routes (uses session workspace)
         Route::prefix('projects/{project}')->group(function () {
             Route::get('/tasks/kanban', [TaskController::class, 'kanban'])->name('projects.tasks.kanban');
-            Route::get('/tasks/list', [TaskController::class, 'index'])->name('projects.tasks.index');
+            Route::get('/tasks/list', [TaskController::class, 'list'])->name('projects.tasks.list');
+            Route::get('/tasks', [TaskController::class, 'kanban'])->name('projects.tasks.index');
             Route::get('/tasks/create', [TaskController::class, 'create'])->name('projects.tasks.create');
             Route::post('/tasks', [TaskController::class, 'store'])->name('projects.tasks.store');
             // Use explicit task resolution to avoid binding conflicts

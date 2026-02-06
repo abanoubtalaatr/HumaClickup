@@ -105,149 +105,6 @@
             </div>
         </div>
 
-        <!-- Estimation Polling Section -->
-        @if($estimationPollingTasks->count() > 0)
-        <div class="mb-8 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-6" x-data="estimationPolling()">
-            <div class="flex items-center justify-between mb-4">
-                <div class="flex items-center space-x-3">
-                    <div class="p-2 bg-amber-100 rounded-lg">
-                        <svg class="h-6 w-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                    </div>
-                    <div>
-                        <h2 class="text-lg font-semibold text-amber-900">Task Estimation Polling</h2>
-                        <p class="text-sm text-amber-700">Submit your time estimates for the following tasks</p>
-                    </div>
-                </div>
-                <span class="bg-amber-100 text-amber-800 text-xs font-medium px-2.5 py-1 rounded-full">
-                    {{ $estimationPollingTasks->where('has_estimated', false)->count() }} pending
-                </span>
-            </div>
-
-            <div class="space-y-3">
-                @foreach($estimationPollingTasks as $item)
-                    <div class="bg-white rounded-lg border border-amber-100 p-4 shadow-sm">
-                        <div class="flex items-center justify-between">
-                            <div class="flex-1">
-                                <div class="flex items-center space-x-2">
-                                    <h3 class="font-medium text-gray-900">{{ $item['task']->title }}</h3>
-                                    @if($item['has_estimated'])
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-                                            <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
-                                            </svg>
-                                            Submitted
-                                        </span>
-                                    @else
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
-                                            Awaiting your estimate
-                                        </span>
-                                    @endif
-                                </div>
-                                <p class="text-sm text-gray-500 mt-1">{{ $item['task']->project?->name }}</p>
-                                
-                                <!-- Progress indicator -->
-                                <div class="mt-2 flex items-center space-x-2">
-                                    <div class="flex-1 bg-gray-200 rounded-full h-2 max-w-xs">
-                                        <div class="bg-amber-500 h-2 rounded-full" style="width: {{ $item['progress']['percentage'] }}%"></div>
-                                    </div>
-                                    <span class="text-xs text-gray-500">{{ $item['progress']['submitted'] }}/{{ $item['progress']['total'] }} submitted</span>
-                                </div>
-                            </div>
-
-                            <div class="ml-4">
-                                @if($item['has_estimated'])
-                                    <div class="text-right">
-                                        <p class="text-sm text-gray-500">Your estimate</p>
-                                        <p class="text-lg font-semibold text-green-600">{{ $item['my_estimation']->getFormattedEstimation() }}</p>
-                                        <button @click="openEditModal({{ $item['task']->id }}, {{ $item['my_estimation']->estimated_minutes }})" 
-                                                class="text-xs text-indigo-600 hover:text-indigo-800">Edit</button>
-                                    </div>
-                                @else
-                                    <button @click="openSubmitModal({{ $item['task']->id }}, '{{ addslashes($item['task']->title) }}')" 
-                                            class="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-amber-600 hover:bg-amber-700">
-                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                        </svg>
-                                        Submit Estimate
-                                    </button>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-                @endforeach
-            </div>
-
-            <!-- Estimation Submit Modal -->
-            <div x-show="showModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto" aria-modal="true">
-                <div class="flex items-center justify-center min-h-screen px-4">
-                    <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" @click="closeModal()"></div>
-                    <div class="relative bg-white rounded-xl shadow-xl max-w-md w-full p-6" @click.stop>
-                        <div class="absolute right-4 top-4">
-                            <button @click="closeModal()" class="text-gray-400 hover:text-gray-500">
-                                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                </svg>
-                            </button>
-                        </div>
-                        
-                        <div class="mb-4">
-                            <div class="flex items-center space-x-3">
-                                <div class="p-2 bg-amber-100 rounded-lg">
-                                    <svg class="h-6 w-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                    </svg>
-                                </div>
-                                <div>
-                                    <h3 class="text-lg font-semibold text-gray-900">Submit Time Estimate</h3>
-                                    <p class="text-sm text-gray-500" x-text="taskTitle"></p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <form @submit.prevent="submitEstimation()">
-                            <div class="space-y-4">
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700">Hours</label>
-                                        <input type="number" x-model="estimatedHours" min="0" max="999" 
-                                               class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
-                                               placeholder="0">
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700">Minutes</label>
-                                        <input type="number" x-model="estimatedMinutes" min="0" max="59"
-                                               class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
-                                               placeholder="0">
-                                    </div>
-                                </div>
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700">Notes (optional)</label>
-                                    <textarea x-model="notes" rows="2"
-                                              class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
-                                              placeholder="Any assumptions or notes about this estimate..."></textarea>
-                                </div>
-                            </div>
-
-                            <div class="mt-6 flex justify-end space-x-3">
-                                <button type="button" @click="closeModal()" 
-                                        class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
-                                    Cancel
-                                </button>
-                                <button type="submit" :disabled="submitting"
-                                        class="px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50">
-                                    <span x-show="!submitting">Submit Estimate</span>
-                                    <span x-show="submitting">Submitting...</span>
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        </div>
-        @endif
-
         @php
             // Calculate 20-day program progress (same as navbar)
             $user = auth()->user();
@@ -265,11 +122,11 @@
             
             $programEndDate = $programStartDate->copy()->addWeeks(4);
             
-            $allProgress = \App\Models\DailyProgress::where('user_id', $user->id)
+            $allProgressData = \App\Models\DailyProgress::where('user_id', $user->id)
                 ->whereBetween('date', [$programStartDate, $programEndDate])
                 ->get();
             
-            $totalCompletedHours = (float) $allProgress->sum('completed_hours');
+            $totalCompletedHours = (float) $allProgressData->sum('completed_hours');
             $targetHours = 120;
             $programProgressPercentage = $targetHours > 0 ? min(($totalCompletedHours / $targetHours) * 100, 100) : 0;
             
@@ -338,6 +195,129 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+
+            {{-- <div class="space-y-3">
+                @foreach($estimationPollingTasks as $item)
+                    <div class="bg-white rounded-lg border border-amber-100 p-4 shadow-sm">
+                        <div class="flex items-center justify-between">
+                            <div class="flex-1">
+                                <div class="flex items-center space-x-2">
+                                    <h3 class="font-medium text-gray-900">{{ $item['task']->title }}</h3>
+                                    @if($item['has_estimated'])
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                            <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                            </svg>
+                                            Submitted
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
+                                            Awaiting your estimate
+                                        </span>
+                                    @endif
+                                </div>
+                                <p class="text-sm text-gray-500 mt-1">{{ $item['task']->project?->name }}</p>
+                                
+                                <!-- Progress indicator -->
+                                <div class="mt-2 flex items-center space-x-2">
+                                    <div class="flex-1 bg-gray-200 rounded-full h-2 max-w-xs">
+                                        <div class="bg-amber-500 h-2 rounded-full" style="width: {{ $item['progress']['percentage'] }}%"></div>
+                                    </div>
+                                    <span class="text-xs text-gray-500">{{ $item['progress']['submitted'] }}/{{ $item['progress']['total'] }} submitted</span>
+                                </div>
+                            </div>
+
+                            <div class="ml-4">
+                                @if($item['has_estimated'])
+                                    <div class="text-right">
+                                        <p class="text-sm text-gray-500">Your estimate</p>
+                                        <p class="text-lg font-semibold text-green-600">{{ $item['my_estimation']->getFormattedEstimation() }}</p>
+                                        <button @click="openEditModal({{ $item['task']->id }}, {{ $item['my_estimation']->estimated_minutes }})" 
+                                                class="text-xs text-indigo-600 hover:text-indigo-800">Edit</button>
+                                    </div>
+                                @else
+                                    <button @click="openSubmitModal({{ $item['task']->id }}, '{{ addslashes($item['task']->title) }}')" 
+                                            class="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-amber-600 hover:bg-amber-700">
+                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                        Submit Estimate
+                                    </button>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div> --}}
+
+            <!-- Estimation Submit Modal -->
+            {{-- <div x-show="showModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto" aria-modal="true">
+                <div class="flex items-center justify-center min-h-screen px-4">
+                    <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" @click="closeModal()"></div>
+                    <div class="relative bg-white rounded-xl shadow-xl max-w-md w-full p-6" @click.stop>
+                        <div class="absolute right-4 top-4">
+                            <button @click="closeModal()" class="text-gray-400 hover:text-gray-500">
+                                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <div class="flex items-center space-x-3">
+                                <div class="p-2 bg-amber-100 rounded-lg">
+                                    <svg class="h-6 w-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-900">Submit Time Estimate</h3>
+                                    <p class="text-sm text-gray-500" x-text="taskTitle"></p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <form @submit.prevent="submitEstimation()">
+                            <div class="space-y-4">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Hours</label>
+                                        <input type="number" x-model="estimatedHours" min="0" max="999" 
+                                               class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
+                                               placeholder="0">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Minutes</label>
+                                        <input type="number" x-model="estimatedMinutes" min="0" max="59"
+                                               class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
+                                               placeholder="0">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Notes (optional)</label>
+                                    <textarea x-model="notes" rows="2"
+                                              class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
+                                              placeholder="Any assumptions or notes about this estimate..."></textarea>
+                                </div>
+                            </div>
+
+                            <div class="mt-6 flex justify-end space-x-3">
+                                <button type="button" @click="closeModal()" 
+                                        class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                    Cancel
+                                </button>
+                                <button type="submit" :disabled="submitting"
+                                        class="px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50">
+                                    <span x-show="!submitting">Submit Estimate</span>
+                                    <span x-show="submitting">Submitting...</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div> --}}
         </div>
 
         <!-- Time Tracking Summary Cards -->
@@ -503,6 +483,149 @@
                     @endforeach
                 </div>
             </div>
+        @endif
+
+        <!-- Estimation Polling Section - Moved to bottom -->
+        @if($estimationPollingTasks->count() > 0)
+        {{-- <div class="mt-8 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-6" x-data="estimationPolling()"> --}}
+            {{-- <div class="flex items-center justify-between mb-4"> --}}
+                {{-- <div class="flex items-center space-x-3"> --}}
+                    {{-- <div class="p-2 bg-amber-100 rounded-lg">
+                        <svg class="h-6 w-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div> --}}
+                    {{-- <div>
+                        <h2 class="text-lg font-semibold text-amber-900">Task Estimation Polling</h2>
+                        <p class="text-sm text-amber-700">Submit your time estimates for the following tasks</p>
+                    </div> --}}
+                {{-- </div> --}}
+                {{-- <span class="bg-amber-100 text-amber-800 text-xs font-medium px-2.5 py-1 rounded-full">
+                    {{ $estimationPollingTasks->where('has_estimated', false)->count() }} pending
+                </span> --}}
+            {{-- </div> --}}
+
+            {{-- <div class="space-y-3">
+                @foreach($estimationPollingTasks as $item)
+                    <div class="bg-white rounded-lg border border-amber-100 p-4 shadow-sm">
+                        <div class="flex items-center justify-between">
+                            <div class="flex-1">
+                                <div class="flex items-center space-x-2">
+                                    <h3 class="font-medium text-gray-900">{{ $item['task']->title }}</h3>
+                                    @if($item['has_estimated'])
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                            <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                            </svg>
+                                            Submitted
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
+                                            Awaiting your estimate
+                                        </span>
+                                    @endif
+                                </div>
+                                <p class="text-sm text-gray-500 mt-1">{{ $item['task']->project?->name }}</p>
+                                
+                                <!-- Progress indicator -->
+                                <div class="mt-2 flex items-center space-x-2">
+                                    <div class="flex-1 bg-gray-200 rounded-full h-2 max-w-xs">
+                                        <div class="bg-amber-500 h-2 rounded-full" style="width: {{ $item['progress']['percentage'] }}%"></div>
+                                    </div>
+                                    <span class="text-xs text-gray-500">{{ $item['progress']['submitted'] }}/{{ $item['progress']['total'] }} submitted</span>
+                                </div>
+                            </div>
+
+                            <div class="ml-4">
+                                @if($item['has_estimated'])
+                                    <div class="text-right">
+                                        <p class="text-sm text-gray-500">Your estimate</p>
+                                        <p class="text-lg font-semibold text-green-600">{{ $item['my_estimation']->getFormattedEstimation() }}</p>
+                                        <button @click="openEditModal({{ $item['task']->id }}, {{ $item['my_estimation']->estimated_minutes }})" 
+                                                class="text-xs text-indigo-600 hover:text-indigo-800">Edit</button>
+                                    </div>
+                                @else
+                                    <button @click="openSubmitModal({{ $item['task']->id }}, '{{ addslashes($item['task']->title) }}')" 
+                                            class="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-amber-600 hover:bg-amber-700">
+                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                        Submit Estimate
+                                    </button>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div> --}}
+
+            <!-- Estimation Submit Modal -->
+            {{-- <div x-show="showModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto" aria-modal="true">
+                <div class="flex items-center justify-center min-h-screen px-4">
+                    <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" @click="closeModal()"></div>
+                    <div class="relative bg-white rounded-xl shadow-xl max-w-md w-full p-6" @click.stop>
+                        <div class="absolute right-4 top-4">
+                            <button @click="closeModal()" class="text-gray-400 hover:text-gray-500">
+                                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <div class="flex items-center space-x-3">
+                                <div class="p-2 bg-amber-100 rounded-lg">
+                                    <svg class="h-6 w-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-900">Submit Time Estimate</h3>
+                                    <p class="text-sm text-gray-500" x-text="taskTitle"></p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <form @submit.prevent="submitEstimation()">
+                            <div class="space-y-4">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Hours</label>
+                                        <input type="number" x-model="estimatedHours" min="0" max="999" 
+                                               class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
+                                               placeholder="0">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Minutes</label>
+                                        <input type="number" x-model="estimatedMinutes" min="0" max="59"
+                                               class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
+                                               placeholder="0">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Notes (optional)</label>
+                                    <textarea x-model="notes" rows="2"
+                                              class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
+                                              placeholder="Any assumptions or notes about this estimate..."></textarea>
+                                </div>
+                            </div>
+
+                            <div class="mt-6 flex justify-end space-x-3">
+                                <button type="button" @click="closeModal()" 
+                                        class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                    Cancel
+                                </button>
+                                <button type="submit" :disabled="submitting"
+                                        class="px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50">
+                                    <span x-show="!submitting">Submit Estimate</span>
+                                    <span x-show="submitting">Submitting...</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div> --}}
+        {{-- </div> --}}
         @endif
     </div>
 </div>
