@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Project;
 use App\Models\Workspace;
-use App\Http\Requests\AssignTestersRequest;
 use App\Services\TesterAssignmentService;
 use Illuminate\Http\Request;
 
@@ -18,89 +17,74 @@ class TesterAssignmentController extends Controller
     }
 
     /**
-     * Show form to assign testers to a project.
+     * Show assign testers form.
      */
-    public function create(Project $project)
+    public function create(Request $request, Project $project)
     {
-        $this->authorize('update', $project);
-        
-        $workspace = Workspace::findOrFail(session('current_workspace_id'));
+        $workspaceId = session('current_workspace_id');
+        $user = auth()->user();
+
+        // Check authorization (only testing leads or admins/owners)
+        if (!$user->isAdminInWorkspace($workspaceId) && 
+            !$user->isOwnerInWorkspace($workspaceId) &&
+            !$user->hasTestingTrackInWorkspace($workspaceId)) {
+            abort(403, 'Only testing leads can assign testers.');
+        }
+
+        // Get workspace
+        $workspace = Workspace::find($workspaceId);
+
+        // Get available testers
         $availableTesters = $this->testerService->getAvailableTesters($workspace);
-        $currentTesters = $project->activeTesters;
-        
-        // Get recommended testers based on workload
+
+        // Get recommended testers (balanced workload)
         $recommendedTesters = $this->testerService->getRecommendedTesters($workspace, 2);
-        
-        // Calculate workload for each tester
-        $testersWithWorkload = $availableTesters->map(function ($tester) use ($testerService) {
-            return [
-                'user' => $tester,
-                'workload' => $this->testerService->getTesterWorkload($tester),
-            ];
-        });
-        
-        return view('testers.assign', compact(
+
+        // Get already assigned testers
+        $assignedTesters = $project->projectTesters()->with('user')->get();
+
+        return view('projects.assign-testers', compact(
             'project',
-            'testersWithWorkload',
-            'currentTesters',
-            'recommendedTesters'
+            'availableTesters',
+            'recommendedTesters',
+            'assignedTesters'
         ));
     }
 
     /**
-     * Assign testers to project.
+     * Store tester assignments.
      */
-    public function store(AssignTestersRequest $request, Project $project)
+    public function store(Request $request, Project $project)
     {
-        $this->authorize('update', $project);
-        
+        $workspaceId = session('current_workspace_id');
+        $user = auth()->user();
+
+        // Check authorization
+        if (!$user->isAdminInWorkspace($workspaceId) && 
+            !$user->isOwnerInWorkspace($workspaceId) &&
+            !$user->hasTestingTrackInWorkspace($workspaceId)) {
+            abort(403, 'Only testing leads can assign testers.');
+        }
+
+        $validated = $request->validate([
+            'tester_ids' => 'required|array|min:1',
+            'tester_ids.*' => 'required|exists:users,id',
+        ]);
+
+        // Assign testers
         $result = $this->testerService->assignTesters(
             $project,
-            $request->tester_ids,
-            auth()->user()
+            $validated['tester_ids'],
+            $user
         );
-        
-        $message = count($result['assigned']) . ' tester(s) assigned successfully.';
-        
+
         if (!empty($result['errors'])) {
-            $message .= ' Some assignments failed: ' . implode(', ', $result['errors']);
+            return back()
+                ->with('warning', implode(' ', $result['errors']))
+                ->with('success', count($result['assigned']) . ' tester(s) assigned successfully.');
         }
-        
-        return redirect()
-            ->route('projects.show', $project->id)
-            ->with('success', $message);
-    }
 
-    /**
-     * Remove a tester from project.
-     */
-    public function destroy(Project $project, $testerId)
-    {
-        $this->authorize('update', $project);
-        
-        $tester = \App\Models\User::findOrFail($testerId);
-        
-        $removed = $this->testerService->removeTester($project, $tester);
-        
-        if ($removed) {
-            return back()->with('success', 'Tester removed successfully.');
-        }
-        
-        return back()->withErrors(['error' => 'Failed to remove tester.']);
-    }
-
-    /**
-     * Show testers for a project.
-     */
-    public function index(Project $project)
-    {
-        $this->authorize('view', $project);
-        
-        $testers = $project->testers()
-            ->with('tester')
-            ->latest()
-            ->get();
-        
-        return view('testers.index', compact('project', 'testers'));
+        return redirect()->route('projects.show', $project)
+            ->with('success', count($result['assigned']) . ' tester(s) assigned successfully!');
     }
 }

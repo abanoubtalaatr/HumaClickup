@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Notification;
 
 class TaskAssignedNotification extends Notification implements ShouldQueue
@@ -24,7 +25,7 @@ class TaskAssignedNotification extends Notification implements ShouldQueue
 
     public function via($notifiable): array
     {
-        return ['database', 'mail'];
+        return ['database', 'mail', 'broadcast'];
     }
 
     public function toMail($notifiable): MailMessage
@@ -57,6 +58,12 @@ class TaskAssignedNotification extends Notification implements ShouldQueue
             'priority' => $this->task->priority,
             'due_date' => $this->task->due_date?->format('Y-m-d'),
             'message' => "You have been assigned a new task '{$this->task->title}' by {$this->assignedBy->name}.",
+            'url' => url("/projects/{$this->task->project_id}/tasks/{$this->task->id}"),
         ];
+    }
+
+    public function toBroadcast($notifiable): BroadcastMessage
+    {
+        return new BroadcastMessage($this->toArray($notifiable));
     }
 }

@@ -143,15 +143,28 @@
                         <div class="p-4">
                             <!-- Task Title -->
                             <div class="mb-4">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">
                                     📝 Task Title <span class="text-red-500">*</span>
                                 </label>
                                 <input type="text" 
                                        x-model="task.title"
                                        placeholder="e.g., Build user authentication system"
                                        required
-                                       class="block w-full px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm transition-all"
+                                       class="block w-full px-5 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-base font-medium transition-all"
                                        :class="{ 'border-red-300 bg-red-50': !task.title }">
+                            </div>
+
+                            <!-- Task Description -->
+                            <div class="mb-4">
+                                <label class="block text-sm font-semibold text-gray-700 mb-2">
+                                    📄 Description
+                                </label>
+                                <textarea 
+                                       x-model="task.description"
+                                       :id="'task-desc-' + task.id"
+                                       rows="4"
+                                       placeholder="Describe the task in detail..."
+                                       class="tinymce-editor block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-base leading-relaxed transition-all"></textarea>
                             </div>
 
                             <!-- Estimated Hours -->
@@ -206,25 +219,35 @@
                                      x-collapse
                                      class="space-y-2 mt-3">
                                     <template x-for="(subtask, subIndex) in task.subtasks" :key="subtask.id">
-                                        <div class="flex items-center space-x-2 bg-gradient-to-r from-gray-50 to-white p-3 rounded-lg border border-gray-200 hover:border-indigo-300 transition-colors">
-                                            <span class="flex items-center justify-center h-6 w-6 rounded-full bg-gray-200 text-gray-600 text-xs font-semibold" x-text="subIndex + 1"></span>
-                                            <input type="text" 
-                                                   x-model="subtask.title"
-                                                   placeholder="Subtask description..."
-                                                   class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                                            <input type="number" 
-                                                   x-model.number="subtask.estimated_hours"
-                                                   placeholder="Hours"
-                                                   min="0.5"
-                                                   step="0.5"
-                                                   class="w-24 px-3 py-2 border border-gray-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
-                                            <button type="button"
-                                                    @click="removeSubtask(task.id, subtask.id)"
-                                                    class="flex items-center justify-center h-8 w-8 rounded-lg text-red-600 hover:bg-red-50 transition-colors">
-                                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                                </svg>
-                                            </button>
+                                        <div class="bg-gradient-to-r from-gray-50 to-white p-4 rounded-lg border border-gray-200 hover:border-indigo-300 transition-colors">
+                                            <div class="flex items-center space-x-2 mb-3">
+                                                <span class="flex items-center justify-center h-7 w-7 rounded-full bg-indigo-100 text-indigo-700 text-xs font-bold" x-text="subIndex + 1"></span>
+                                                <input type="text" 
+                                                       x-model="subtask.title"
+                                                       placeholder="Subtask title..."
+                                                       class="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg text-base font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                                <input type="number" 
+                                                       x-model.number="subtask.estimated_hours"
+                                                       placeholder="Hours"
+                                                       min="0.5"
+                                                       step="0.5"
+                                                       class="w-24 px-3 py-2 border border-gray-300 rounded-lg text-base font-semibold focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                                <button type="button"
+                                                        @click="removeSubtask(task.id, subtask.id)"
+                                                        class="flex items-center justify-center h-9 w-9 rounded-lg text-red-600 hover:bg-red-50 transition-colors">
+                                                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                                    </svg>
+                                                </button>
+                                            </div>
+                                            <div class="ml-9">
+                                                <textarea 
+                                                       x-model="subtask.description"
+                                                       :id="'subtask-desc-' + task.id + '-' + subtask.id"
+                                                       rows="2"
+                                                       placeholder="Subtask description (optional)..."
+                                                       class="tinymce-editor block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm leading-relaxed focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                                            </div>
                                         </div>
                                     </template>
 
@@ -301,3 +324,37 @@
         </div>
     </div>
 </div>
+
+@push('scripts')
+<script>
+document.addEventListener('alpine:initialized', () => {
+    // Initialize TinyMCE for description fields when Step 2 is shown
+    const initTinyMCE = () => {
+        if (typeof tinymce !== 'undefined') {
+            tinymce.init({
+                selector: 'textarea.tinymce-editor',
+                menubar: false,
+                height: 200,
+                plugins: 'lists link code',
+                toolbar: 'undo redo | bold italic | bullist numlist | link | removeformat',
+                branding: false,
+                statusbar: false,
+                content_style: 'body { font-family: Inter, sans-serif; font-size: 14px; line-height: 1.6; }',
+                setup: function(editor) {
+                    editor.on('change', function() {
+                        editor.save(); // Sync content back to textarea (Alpine x-model)
+                    });
+                }
+            });
+        }
+    };
+
+    // Initialize when moving to Step 2
+    window.addEventListener('step-changed', (e) => {
+        if (e.detail === 2) {
+            setTimeout(initTinyMCE, 300); // Delay to ensure DOM is ready
+        }
+    });
+});
+</script>
+@endpush

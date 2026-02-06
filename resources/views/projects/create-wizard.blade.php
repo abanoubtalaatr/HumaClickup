@@ -209,6 +209,8 @@ function projectWizard() {
             
             if (this.currentStep < 3) {
                 this.currentStep++;
+                // Dispatch step change event
+                window.dispatchEvent(new CustomEvent('step-changed', { detail: this.currentStep }));
             }
         },
         
@@ -247,6 +249,9 @@ function projectWizard() {
                     this.expandedSubtasks[currentTaskId] = true;
                 }
             });
+            
+            // Dispatch event for TinyMCE initialization
+            window.dispatchEvent(new CustomEvent('step-changed', { detail: 2 }));
         },
         
         toggleGuestSection(guestUserId) {
@@ -263,6 +268,7 @@ function projectWizard() {
                 mainTask.subtasks.push({
                     id: Date.now(),
                     title: '',
+                    description: '',
                     estimated_hours: 0
                 });
             }

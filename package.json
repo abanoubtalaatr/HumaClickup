@@ -17,6 +17,8 @@
     "dependencies": {
         "@alpinejs/sort": "^3.15.3",
         "alpinejs": "^3.15.3",
+        "laravel-echo": "^1.16.1",
+        "pusher-js": "^8.4.0-rc2",
         "sortablejs": "^1.15.6"
     }
 }

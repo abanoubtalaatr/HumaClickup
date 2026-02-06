@@ -9,6 +9,7 @@ use App\Http\Controllers\SprintController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\WorkspaceController;
 use App\Http\Controllers\TimeTrackingController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\TrackController;
 use App\Http\Controllers\TaskEstimationController;
 use App\Http\Controllers\TopicController;
@@ -18,6 +19,7 @@ use App\Http\Controllers\CommentController;
 use App\Http\Controllers\MentorDashboardController;
 use App\Http\Controllers\GuestProgressController;
 use App\Http\Controllers\OwnerDashboardController;
+use App\Http\Controllers\TesterAssignmentController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -260,6 +262,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/projects/{project}/edit', [ProjectController::class, 'edit'])->name('projects.edit');
         Route::put('/projects/{project}', [ProjectController::class, 'update'])->name('projects.update');
         Route::delete('/projects/{project}', [ProjectController::class, 'destroy'])->name('projects.destroy');
+        Route::get('/projects/{project}/assign-testers', [TesterAssignmentController::class, 'create'])->name('projects.assign-testers');
+        Route::post('/projects/{project}/assign-testers', [TesterAssignmentController::class, 'store'])->name('projects.store-testers');
         
         Route::get('/tasks', [TaskController::class, 'kanban'])->name('tasks.index');
         Route::get('/tasks/kanban', [TaskController::class, 'kanban'])->name('tasks.kanban');
@@ -436,5 +440,11 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/projects/{project}/details', [OwnerDashboardController::class, 'showProject'])->name('project-details');
             Route::get('/guests-without-tasks', [OwnerDashboardController::class, 'guestsWithoutTasks'])->name('guests-without-tasks');
         });
+        
+        // Notification Routes
+        Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.api');
+        Route::get('/notifications/all', [NotificationController::class, 'all'])->name('notifications.index');
+        Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
+        Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
     });
 });

@@ -9,6 +9,7 @@ use App\Models\Track;
 use App\Models\Task;
 use App\Services\ProjectPlanningService;
 use App\Services\TaskService;
+use App\Notifications\TaskAssignedNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -232,12 +233,13 @@ class ProjectController extends Controller
             'guest_members.*.track_id' => 'nullable|exists:tracks,id',
             'main_tasks' => 'required|array|min:1',
             'main_tasks.*.title' => 'required|string|max:255',
+            'main_tasks.*.description' => 'nullable|string',
             'main_tasks.*.guest_user_id' => 'required|exists:users,id',
             'main_tasks.*.day_number' => 'required|integer|min:1',
             'main_tasks.*.estimated_hours' => 'required|numeric|min:6',
-            'main_tasks.*.description' => 'nullable|string',
             'main_tasks.*.subtasks' => 'nullable|array',
             'main_tasks.*.subtasks.*.title' => 'required|string|max:255',
+            'main_tasks.*.subtasks.*.description' => 'nullable|string',
             'main_tasks.*.subtasks.*.estimated_hours' => 'required|numeric|min:0.5',
         ]);
 
@@ -311,6 +313,12 @@ class ProjectController extends Controller
                     // Assign to guest
                     $mainTask->assignees()->attach($taskData['guest_user_id']);
 
+                    // Send notification to assigned guest
+                    $assignedGuest = User::find($taskData['guest_user_id']);
+                    if ($assignedGuest) {
+                        $assignedGuest->notify(new TaskAssignedNotification($mainTask, $user));
+                    }
+
                     // Calculate bug time limit
                     $mainTask->update([
                         'bug_time_limit' => $mainTask->calculateBugTimeLimit(),
@@ -325,6 +333,7 @@ class ProjectController extends Controller
                                 'parent_id' => $mainTask->id,
                                 'creator_id' => $user->id,
                                 'title' => $subtaskData['title'],
+                                'description' => $subtaskData['description'] ?? null,
                                 'estimated_time' => $subtaskData['estimated_hours'],
                                 'status_id' => $todoStatus->id,
                                 'is_main_task' => 'no',
