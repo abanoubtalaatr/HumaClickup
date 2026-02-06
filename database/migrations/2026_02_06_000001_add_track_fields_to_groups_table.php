@@ -12,13 +12,33 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('groups', function (Blueprint $table) {
-            $table->foreignId('track_id')->nullable()->after('workspace_id')->constrained('tracks')->nullOnDelete();
-            $table->integer('min_members')->default(3)->after('description');
-            $table->integer('max_members')->default(5)->after('min_members');
-            $table->boolean('is_active')->default(true)->after('max_members');
-            
-            $table->index('track_id');
+            if (!Schema::hasColumn('groups', 'track_id')) {
+                $table->foreignId('track_id')->nullable()->after('workspace_id')->constrained('tracks')->nullOnDelete();
+            }
+            if (!Schema::hasColumn('groups', 'min_members')) {
+                $table->integer('min_members')->default(3)->after('description');
+            }
+            if (!Schema::hasColumn('groups', 'max_members')) {
+                $table->integer('max_members')->default(5)->after('min_members');
+            }
+            if (!Schema::hasColumn('groups', 'is_active')) {
+                $table->boolean('is_active')->default(true)->after('max_members');
+            }
         });
+        
+        Schema::table('groups', function (Blueprint $table) {
+            if (!$this->indexExists('groups', 'groups_track_id_index')) {
+                $table->index('track_id');
+            }
+        });
+    }
+
+    private function indexExists($table, $name): bool
+    {
+        $conn = Schema::getConnection();
+        $dbSchemaManager = $conn->getDoctrineSchemaManager();
+        $doctrineTable = $dbSchemaManager->introspectTable($table);
+        return $doctrineTable->hasIndex($name);
     }
 
     /**
