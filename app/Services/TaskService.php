@@ -224,17 +224,40 @@ class TaskService
 
         // If moving to "done" type status
         if ($newStatus && $newStatus->type === 'done') {
+            // Record completion timestamp
+            $task->update(['completion_date' => now()]);
+            
             // Stop any running timers
             $task->timeEntries()
                 ->whereNull('end_time')
                 ->get()
                 ->each(fn($entry) => $entry->stop());
 
+            // Trigger daily progress recalculation if this is a main task
+            if ($task->is_main_task === 'yes' && $task->project) {
+                $this->recalculateDailyProgress($task);
+            }
+
             // Notify watchers
             // NotificationService::notifyTaskCompleted($task);
 
             // Check if this unblocks other tasks
             $this->checkUnblockedTasks($task);
+        }
+    }
+    
+    /**
+     * Recalculate daily progress for a main task completion.
+     */
+    protected function recalculateDailyProgress(Task $task): void
+    {
+        // Get assignees and recalculate their daily progress
+        $assignees = $task->assignees;
+        $taskDate = $task->assigned_date ?? $task->due_date ?? today();
+        
+        foreach ($assignees as $assignee) {
+            $progressService = app(\App\Services\DailyProgressService::class);
+            $progressService->calculateDailyProgress($assignee, $task->project, $taskDate);
         }
     }
 

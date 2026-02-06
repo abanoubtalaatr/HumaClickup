@@ -16,14 +16,12 @@ class TesterAssignmentService
      */
     public function findTestingTeamLeads(Workspace $workspace): \Illuminate\Database\Eloquent\Collection
     {
+        // Get members from workspace with Testing track
         return $workspace->users()
-            ->whereHas('workspaces', function ($query) use ($workspace) {
-                $query->where('workspace_id', $workspace->id)
-                    ->where('role', 'member')
-                    ->whereHas('track', function ($q) {
-                        $q->where('name', 'Testing')
-                          ->orWhere('slug', 'testing');
-                    });
+            ->wherePivot('role', 'member')
+            ->whereHas('tracks', function ($query) {
+                $query->where('name', 'Testing')
+                    ->orWhere('slug', 'testing');
             })
             ->get();
     }
@@ -130,13 +128,12 @@ class TesterAssignmentService
      */
     public function getAvailableTesters(Workspace $workspace): \Illuminate\Database\Eloquent\Collection
     {
+        // Get users with Testing track from workspace
         return $workspace->users()
-            ->whereHas('workspaces', function ($query) use ($workspace) {
-                $query->where('workspace_id', $workspace->id)
-                    ->whereHas('track', function ($q) {
-                        $q->where('name', 'Testing')
-                          ->orWhere('slug', 'testing');
-                    });
+            ->wherePivot('role', 'guest')
+            ->whereHas('tracks', function ($query) {
+                $query->where('name', 'Testing')
+                    ->orWhere('slug', 'testing');
             })
             ->get();
     }

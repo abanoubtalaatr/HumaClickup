@@ -65,11 +65,11 @@ class DailyProgressService
             return $progress;
         }
 
-        // Check if task is complete
-        $isComplete = $this->isTaskComplete($mainTask);
+        // Check if task is complete and completed before 11 PM (23:00)
+        $isComplete = $this->isTaskComplete($mainTask, $date);
 
         // Calculate completed hours
-        // Rule: Only count hours if task is DONE
+        // Rule: Only count hours if task is DONE and completed before 11 PM of task date
         $completedHours = $isComplete ? $mainTask->estimated_time : 0;
 
         // Calculate progress percentage
@@ -112,14 +112,32 @@ class DailyProgressService
     }
 
     /**
-     * Check if a task is complete.
+     * Check if a task is complete and was completed on time (before 11 PM).
+     * 
+     * Rule: Task must be marked as done before 11:00 PM of the task date
+     * to count toward daily progress.
      * 
      * @param Task $task
+     * @param Carbon $taskDate
      * @return bool
      */
-    public function isTaskComplete(Task $task): bool
+    public function isTaskComplete(Task $task, Carbon $taskDate = null): bool
     {
-        return $task->status && $task->status->type === 'done';
+        // Check if task status is done
+        if (!$task->status || $task->status->type !== 'done') {
+            return false;
+        }
+
+        // If no date specified, just check status
+        if (!$taskDate) {
+            return true;
+        }
+
+        // Check if task was completed before 11 PM on the task date
+        $completionTime = $task->completion_date ?? $task->updated_at;
+        $deadline = $taskDate->copy()->setTime(23, 0, 0); // 11:00 PM
+
+        return $completionTime <= $deadline;
     }
 
     /**

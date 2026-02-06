@@ -73,24 +73,45 @@ class ProjectController extends Controller
     public function create()
     {
         $workspaceId = session('current_workspace_id');
+        $user = auth()->user();
         
         // Only members and admins can create projects
-        if (!auth()->user()->canCreateInWorkspace($workspaceId)) {
+        if (!$user->canCreateInWorkspace($workspaceId)) {
             abort(403, 'Guests cannot create projects.');
         }
         
         $workspace = Workspace::find($workspaceId);
         $spaces = $workspace?->spaces ?? collect();
 
-        // Get all guests in workspace for assignment
-        $guests = $workspace->users()
-            ->wherePivot('role', 'guest')
-            ->get();
+        // Get guests based on user role:
+        // - Members: only their created guests
+        // - Admin/Owner: all guests in workspace
+        if ($user->isMemberOnlyInWorkspace($workspaceId)) {
+            $guests = $workspace->guestsCreatedBy($user->id)->get();
+        } else {
+            $guests = $workspace->users()
+                ->wherePivot('role', 'guest')
+                ->get();
+        }
+
+        // Get groups based on user role:
+        // - Members: only their created groups
+        // - Admin/Owner: all groups in workspace
+        if ($user->isMemberOnlyInWorkspace($workspaceId)) {
+            $groups = \App\Models\Group::where('workspace_id', $workspaceId)
+                ->where('created_by_user_id', $user->id)
+                ->with('guests')
+                ->get();
+        } else {
+            $groups = \App\Models\Group::where('workspace_id', $workspaceId)
+                ->with('guests')
+                ->get();
+        }
 
         // Get all tracks for track selection
         $tracks = Track::where('workspace_id', $workspaceId)->get();
 
-        return view('projects.create', compact('spaces', 'guests', 'tracks'));
+        return view('projects.create', compact('spaces', 'guests', 'groups', 'tracks'));
     }
 
     public function store(Request $request)
