@@ -2,6 +2,15 @@
 
 @section('title', 'My Dashboard')
 
+@push('styles')
+<style>
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+</style>
+@endpush
+
 @section('content')
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="py-6">
@@ -238,6 +247,98 @@
             </div>
         </div>
         @endif
+
+        @php
+            // Calculate 20-day program progress (same as navbar)
+            $user = auth()->user();
+            $workspaceId = session('current_workspace_id');
+            
+            $guestProjects = \App\Models\Project::where('workspace_id', $workspaceId)
+                ->whereHas('projectMembers', function ($q) use ($user) {
+                    $q->where('user_id', $user->id)->where('role', 'guest');
+                })
+                ->get();
+            
+            $programStartDate = $guestProjects->min('start_date') 
+                ? \Carbon\Carbon::parse($guestProjects->min('start_date'))
+                : now()->subDays(20);
+            
+            $programEndDate = $programStartDate->copy()->addWeeks(4);
+            
+            $allProgress = \App\Models\DailyProgress::where('user_id', $user->id)
+                ->whereBetween('date', [$programStartDate, $programEndDate])
+                ->get();
+            
+            $totalCompletedHours = (float) $allProgress->sum('completed_hours');
+            $targetHours = 120;
+            $programProgressPercentage = $targetHours > 0 ? min(($totalCompletedHours / $targetHours) * 100, 100) : 0;
+            
+            $statusText = $programProgressPercentage >= 100 ? '🎉 Completed!' : 
+                          ($programProgressPercentage >= 75 ? '🚀 Almost There' : 
+                          ($programProgressPercentage >= 50 ? '💪 Great Progress' : 
+                          ($programProgressPercentage >= 25 ? '⚡ Keep Going' : '🌱 Getting Started')));
+        @endphp
+
+        <!-- 20-Day Program Progress Card -->
+        <div class="mb-8 rounded-xl shadow-2xl p-8 text-white border-4 border-purple-700" style="background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 50%, #2563eb 100%);">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h2 class="text-3xl font-black mb-2 drop-shadow-lg">Program Progress</h2>
+                    <p class="text-blue-100 text-base font-medium">Overall progress across 4 weeks</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-7xl font-black drop-shadow-2xl">{{ number_format($programProgressPercentage, 0) }}%</p>
+                </div>
+            </div>
+            
+            <!-- Progress Bar with Dynamic Colors -->
+            <div class="bg-gray-800 bg-opacity-60 rounded-full h-8 shadow-2xl overflow-hidden mb-6 relative">
+                @php
+                    // Dynamic color based on progress
+                    $progressColor = $programProgressPercentage >= 75 ? 'linear-gradient(90deg, #10b981 0%, #059669 50%, #047857 100%)' : 
+                                    ($programProgressPercentage >= 50 ? 'linear-gradient(90deg, #3b82f6 0%, #2563eb 50%, #1d4ed8 100%)' : 
+                                    ($programProgressPercentage >= 25 ? 'linear-gradient(90deg, #f59e0b 0%, #d97706 50%, #b45309 100%)' : 
+                                    'linear-gradient(90deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%)'));
+                @endphp
+                
+                @if($programProgressPercentage > 0)
+                    <div class="h-full rounded-full transition-all duration-1000 ease-out relative overflow-hidden"
+                         style="width: {{ $programProgressPercentage }}%; 
+                                background: {{ $progressColor }};
+                                box-shadow: 0 0 25px rgba(74, 222, 128, 0.8), inset 0 3px 6px rgba(255,255,255,0.4);">
+                        <!-- Animated shine effect -->
+                        <div class="absolute inset-0 opacity-40" style="background: linear-gradient(90deg, transparent 0%, white 50%, transparent 100%); animation: shimmer 2s infinite;"></div>
+                        <!-- Pulse effect -->
+                        <div class="absolute inset-0 animate-pulse opacity-20" style="background: radial-gradient(circle, white 0%, transparent 70%);"></div>
+                    </div>
+                @else
+                    <div class="h-full rounded-full bg-red-600 bg-opacity-40" style="width: 2%;"></div>
+                @endif
+                
+                <!-- Progress percentage overlay -->
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <span class="text-white text-sm font-bold drop-shadow-lg">{{ $statusText }}</span>
+                </div>
+            </div>
+            
+            <!-- Stats - 2 columns -->
+            <div class="grid grid-cols-2 gap-6">
+                <div class="rounded-xl p-6 shadow-xl border-2 border-opacity-40" style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(37, 99, 235, 0.3)); border-color: rgba(255,255,255,0.3);">
+                    <p class="text-blue-100 text-sm font-bold mb-2 uppercase tracking-wide">Total Hours</p>
+                    <div class="flex items-baseline space-x-2">
+                        <p class="text-5xl font-black text-white drop-shadow-lg">{{ number_format($totalCompletedHours, 1) }}</p>
+                        <p class="text-2xl font-bold text-blue-200">/ {{ $targetHours }}h</p>
+                    </div>
+                </div>
+                <div class="rounded-xl p-6 shadow-xl border-2 border-opacity-40" style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(124, 58, 237, 0.3)); border-color: rgba(255,255,255,0.3);">
+                    <p class="text-purple-100 text-sm font-bold mb-2 uppercase tracking-wide">Remaining</p>
+                    <div class="flex items-baseline space-x-2">
+                        <p class="text-5xl font-black text-white drop-shadow-lg">{{ number_format(max($targetHours - $totalCompletedHours, 0), 1) }}</p>
+                        <p class="text-2xl font-bold text-purple-200">hours</p>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- Time Tracking Summary Cards -->
         <div class="mb-8">
