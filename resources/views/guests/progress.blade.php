@@ -57,35 +57,50 @@
             </div>
         </div>
         
-        <!-- Progress Bar -->
-        <div class="bg-gray-700 bg-opacity-40 backdrop-blur-sm rounded-full h-6 shadow-inner border-2 border-white border-opacity-20 overflow-hidden mb-6">
+        <!-- Progress Bar with Dynamic Colors -->
+        <div class="bg-gray-800 bg-opacity-60 rounded-full h-8 shadow-2xl overflow-hidden mb-6 relative">
+            @php
+                // Dynamic color based on progress
+                $progressColor = $programProgressPercentage >= 75 ? 'linear-gradient(90deg, #10b981 0%, #059669 50%, #047857 100%)' : 
+                                ($programProgressPercentage >= 50 ? 'linear-gradient(90deg, #3b82f6 0%, #2563eb 50%, #1d4ed8 100%)' : 
+                                ($programProgressPercentage >= 25 ? 'linear-gradient(90deg, #f59e0b 0%, #d97706 50%, #b45309 100%)' : 
+                                'linear-gradient(90deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%)'));
+            @endphp
+            
             @if($programProgressPercentage > 0)
                 <div class="h-full rounded-full transition-all duration-1000 ease-out relative overflow-hidden"
                      style="width: {{ $programProgressPercentage }}%; 
-                            background: linear-gradient(90deg, #4ade80 0%, #22c55e 50%, #16a34a 100%);
-                            box-shadow: 0 0 20px rgba(74, 222, 128, 0.7), inset 0 2px 4px rgba(255,255,255,0.3);">
-                    <!-- Shine effect -->
-                    <div class="absolute inset-0 opacity-30" style="background: linear-gradient(90deg, transparent 0%,  50%, transparent 100%); animation: shimmer 2s infinite;"></div>
+                            background: {{ $progressColor }};
+                            box-shadow: 0 0 25px rgba(74, 222, 128, 0.8), inset 0 3px 6px rgba(255,255,255,0.4);">
+                    <!-- Animated shine effect -->
+                    <div class="absolute inset-0 opacity-40" style="background: linear-gradient(90deg, transparent 0%, white 50%, transparent 100%); animation: shimmer 2s infinite;"></div>
+                    <!-- Pulse effect -->
+                    <div class="absolute inset-0 animate-pulse opacity-20" style="background: radial-gradient(circle, white 0%, transparent 70%);"></div>
                 </div>
             @else
-                <div class="h-full rounded-full bg-gray-600 bg-opacity-30" style="width: 2%;"></div>
+                <div class="h-full rounded-full bg-red-600 bg-opacity-40" style="width: 2%;"></div>
             @endif
+            
+            <!-- Progress percentage overlay -->
+            <div class="absolute inset-0 flex items-center justify-center">
+                <span class="text-white text-sm font-bold drop-shadow-lg">{{ number_format($programProgressPercentage, 0) }}%</span>
+            </div>
         </div>
         
         <!-- Stats - Only 2 columns now -->
         <div class="grid grid-cols-2 gap-6">
-            <div class=" bg-opacity-15 backdrop-blur-md rounded-xl p-5 border-2 border-white border-opacity-25 shadow-lg">
-                <p class="text-blue-100 text-sm font-semibold mb-2">Total Hours</p>
+            <div class="rounded-xl p-6 shadow-xl border-2 border-opacity-40" style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(37, 99, 235, 0.3)); border-color: rgba(255,255,255,0.3);">
+                <p class="text-blue-100 text-sm font-bold mb-2 uppercase tracking-wide">Total Hours</p>
                 <div class="flex items-baseline space-x-2">
-                    <p class="text-4xl font-black">{{ number_format($totalCompletedHours, 1) }}</p>
+                    <p class="text-5xl font-black text-white drop-shadow-lg">{{ number_format($totalCompletedHours, 1) }}</p>
                     <p class="text-2xl font-bold text-blue-200">/ {{ $targetHours }}h</p>
                 </div>
             </div>
-            <div class=" bg-opacity-15 backdrop-blur-md rounded-xl p-5 border-2 border-white border-opacity-25 shadow-lg">
-                <p class="text-blue-100 text-sm font-semibold mb-2">Remaining</p>
+            <div class="rounded-xl p-6 shadow-xl border-2 border-opacity-40" style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(124, 58, 237, 0.3)); border-color: rgba(255,255,255,0.3);">
+                <p class="text-purple-100 text-sm font-bold mb-2 uppercase tracking-wide">Remaining</p>
                 <div class="flex items-baseline space-x-2">
-                    <p class="text-4xl font-black">{{ number_format(max($targetHours - $totalCompletedHours, 0), 1) }}</p>
-                    <p class="text-2xl font-bold text-blue-200">hours</p>
+                    <p class="text-5xl font-black text-white drop-shadow-lg">{{ number_format(max($targetHours - $totalCompletedHours, 0), 1) }}</p>
+                    <p class="text-2xl font-bold text-purple-200">hours</p>
                 </div>
             </div>
         </div>
