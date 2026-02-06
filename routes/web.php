@@ -15,6 +15,9 @@ use App\Http\Controllers\TopicController;
 use App\Http\Controllers\DailyStatusController;
 use App\Http\Controllers\TagController;
 use App\Http\Controllers\CommentController;
+use App\Http\Controllers\MentorDashboardController;
+use App\Http\Controllers\GuestProgressController;
+use App\Http\Controllers\OwnerDashboardController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -404,5 +407,33 @@ Route::middleware(['auth'])->group(function () {
         // Dashboard as user route (Admin feature to view member dashboards)
         Route::get('/dashboard/as/{targetUser}', [DashboardController::class, 'viewAsUser'])->name('dashboard.as-user');
         Route::post('/dashboard/stop-impersonating', [DashboardController::class, 'stopImpersonating'])->name('dashboard.stop-impersonating');
+        
+        // ============================================
+        // STUDENT TRAINING SYSTEM ROUTES
+        // ============================================
+        
+        // Mentor Dashboard Routes
+        Route::prefix('mentor')->name('mentor.')->group(function () {
+            Route::get('/dashboard', [MentorDashboardController::class, 'index'])->name('dashboard');
+            Route::post('/approve-progress/{progress}', [MentorDashboardController::class, 'approveProgress'])->name('approve-progress');
+            Route::post('/approve-attendance/{attendance}', [MentorDashboardController::class, 'approveAttendance'])->name('approve-attendance');
+            Route::post('/bulk-approve-progress', [MentorDashboardController::class, 'bulkApproveProgress'])->name('bulk-approve-progress');
+            Route::post('/bulk-approve-attendance', [MentorDashboardController::class, 'bulkApproveAttendance'])->name('bulk-approve-attendance');
+            Route::get('/projects/{project}/guests/{userId}/progress', [MentorDashboardController::class, 'showGuestProgress'])->name('guest-progress');
+        });
+        
+        // Guest Progress Routes
+        Route::prefix('guests')->name('guests.')->group(function () {
+            Route::get('/progress', [GuestProgressController::class, 'index'])->name('progress');
+            Route::get('/projects/{project}/progress', [GuestProgressController::class, 'show'])->name('project-progress');
+            Route::get('/projects/{project}/calendar', [GuestProgressController::class, 'calendar'])->name('calendar');
+        });
+        
+        // Owner Dashboard Routes
+        Route::prefix('owner')->name('owner.')->group(function () {
+            Route::get('/overview', [OwnerDashboardController::class, 'index'])->name('overview');
+            Route::get('/projects/{project}/details', [OwnerDashboardController::class, 'showProject'])->name('project-details');
+            Route::get('/guests-without-tasks', [OwnerDashboardController::class, 'guestsWithoutTasks'])->name('guests-without-tasks');
+        });
     });
 });

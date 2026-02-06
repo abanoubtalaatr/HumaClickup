@@ -4,10 +4,20 @@ namespace App\Http\Controllers;
 
 use App\Models\Project;
 use App\Models\Workspace;
+use App\Models\User;
+use App\Models\Track;
+use App\Services\ProjectPlanningService;
 use Illuminate\Http\Request;
 
 class ProjectController extends Controller
 {
+    protected ProjectPlanningService $planningService;
+
+    public function __construct(ProjectPlanningService $planningService)
+    {
+        $this->planningService = $planningService;
+    }
+
     public function index(Request $request)
     {
         $workspaceId = session('current_workspace_id');
@@ -72,7 +82,15 @@ class ProjectController extends Controller
         $workspace = Workspace::find($workspaceId);
         $spaces = $workspace?->spaces ?? collect();
 
-        return view('projects.create', compact('spaces'));
+        // Get all guests in workspace for assignment
+        $guests = $workspace->users()
+            ->wherePivot('role', 'guest')
+            ->get();
+
+        // Get all tracks for track selection
+        $tracks = Track::where('workspace_id', $workspaceId)->get();
+
+        return view('projects.create', compact('spaces', 'guests', 'tracks'));
     }
 
     public function store(Request $request)
@@ -90,8 +108,15 @@ class ProjectController extends Controller
             'space_id' => 'nullable|exists:spaces,id',
             'color' => 'nullable|string|max:7',
             'icon' => 'nullable|string',
-            'start_date' => 'nullable|date',
-            'due_date' => 'nullable|date|after_or_equal:start_date',
+            'start_date' => 'required|date',
+            'total_days' => 'required|integer|min:1|max:365',
+            'exclude_weekends' => 'boolean',
+            'min_task_hours' => 'nullable|numeric|min:1|max:24',
+            'weekly_hours_target' => 'nullable|numeric|min:1',
+            'bug_time_allocation_percentage' => 'nullable|numeric|min:0|max:50',
+            'guest_members' => 'required|array|min:1',
+            'guest_members.*.user_id' => 'required|exists:users,id',
+            'guest_members.*.track_id' => 'nullable|exists:tracks,id',
         ]);
 
         $validated['workspace_id'] = $workspaceId;
@@ -99,7 +124,18 @@ class ProjectController extends Controller
         $validated['progress'] = 0;
         $validated['is_archived'] = false;
 
-        $project = Project::create($validated);
+        // Create project
+        $project = Project::create([
+            'workspace_id' => $validated['workspace_id'],
+            'space_id' => $validated['space_id'] ?? null,
+            'created_by_user_id' => $validated['created_by_user_id'],
+            'name' => $validated['name'],
+            'description' => $validated['description'] ?? null,
+            'color' => $validated['color'] ?? '#6366f1',
+            'icon' => $validated['icon'] ?? '📁',
+            'progress' => 0,
+            'is_archived' => false,
+        ]);
 
         // Create default statuses for software development workflow
         $defaultStatuses = [
@@ -115,8 +151,31 @@ class ProjectController extends Controller
             $project->customStatuses()->create($status);
         }
 
-        return redirect()->route('projects.show', $project)
-            ->with('success', 'Project created successfully.');
+        // Initialize project planning with guests and dates
+        try {
+            $this->planningService->initializeProject(
+                $project,
+                $validated['guest_members'],
+                [
+                    'start_date' => $validated['start_date'],
+                    'total_days' => $validated['total_days'],
+                    'exclude_weekends' => $validated['exclude_weekends'] ?? true,
+                    'min_task_hours' => $validated['min_task_hours'] ?? 6,
+                    'bug_time_allocation_percentage' => $validated['bug_time_allocation_percentage'] ?? 20,
+                    'weekly_hours_target' => $validated['weekly_hours_target'] ?? 30,
+                ]
+            );
+
+            return redirect()->route('projects.show', $project)
+                ->with('success', 'Project created successfully! You must create ' . $project->required_main_tasks_count . ' main tasks before starting.');
+        } catch (\Exception $e) {
+            // Rollback project if planning fails
+            $project->delete();
+            
+            return back()
+                ->withInput()
+                ->with('error', 'Failed to initialize project: ' . $e->getMessage());
+        }
     }
 
     public function show(Request $request, Project $project)
