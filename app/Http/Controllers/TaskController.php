@@ -111,15 +111,15 @@ class TaskController extends Controller
             ->get();
 
         // Get tasks for related task selector (only for bug creation)
-        $tasks = collect();
+        $relatedTasks = collect();
         if ($project) {
-            $tasks = Task::where('workspace_id', $workspaceId)
+            $relatedTasks = Task::where('workspace_id', $workspaceId)
                 ->where('project_id', $project->id)
                 ->where('type', 'task')
                 ->get();
         }
 
-        return view('tasks.list', compact('tasks', 'project', 'projects', 'statuses', 'assignees', 'tags', 'sprints', 'isGuest', 'tasks'));
+        return view('tasks.list', compact('tasks', 'project', 'projects', 'statuses', 'assignees', 'tags', 'sprints', 'isGuest', 'relatedTasks'));
     }
 
     public function kanban(Request $request, ?Project $project = null)

@@ -310,9 +310,9 @@
                                         x-model="newTask.related_task_id"
                                         class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                                     <option value="">No related task</option>
-                                    @if(isset($tasks) && $tasks->count() > 0)
-                                        @foreach($tasks as $task)
-                                            <option value="{{ $task->id }}">{{ $task->title }}</option>
+                                    @if(isset($relatedTasks) && $relatedTasks->count() > 0)
+                                        @foreach($relatedTasks as $relatedTask)
+                                            <option value="{{ $relatedTask->id }}">{{ $relatedTask->title }}</option>
                                         @endforeach
                                     @endif
                                 </select>
