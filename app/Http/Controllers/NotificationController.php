@@ -24,7 +24,7 @@ class NotificationController extends Controller
         $notifications = $user->notifications()
             ->take(20)
             ->get();
-dd($notifications);
+
         $unreadCount = $user->unreadNotifications()->count();
 
         return response()->json([
