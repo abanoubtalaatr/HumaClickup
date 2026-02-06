@@ -10,6 +10,77 @@
         <p class="mt-1 text-sm text-gray-500">Track your daily and weekly performance</p>
     </div>
 
+    @php
+        // Calculate 20-day program progress (same as navbar)
+        $user = auth()->user();
+        $workspaceId = session('current_workspace_id');
+        
+        $guestProjects = \App\Models\Project::where('workspace_id', $workspaceId)
+            ->whereHas('projectMembers', function ($q) use ($user) {
+                $q->where('user_id', $user->id)->where('role', 'guest');
+            })
+            ->get();
+        
+        $programStartDate = $guestProjects->min('start_date') 
+            ? \Carbon\Carbon::parse($guestProjects->min('start_date'))
+            : now()->subDays(20);
+        
+        $programEndDate = $programStartDate->copy()->addWeeks(4);
+        
+        $allProgress = \App\Models\DailyProgress::where('user_id', $user->id)
+            ->whereBetween('date', [$programStartDate, $programEndDate])
+            ->get();
+        
+        $totalCompletedHours = (float) $allProgress->sum('completed_hours');
+        $targetHours = 120;
+        $programProgressPercentage = $targetHours > 0 ? min(($totalCompletedHours / $targetHours) * 100, 100) : 0;
+    @endphp
+
+    <!-- 20-Day Program Progress Card -->
+    <div class="mb-6 bg-gradient-to-br from-purple-600 via-indigo-600 to-blue-600 rounded-xl shadow-2xl p-8 text-white">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h2 class="text-2xl font-black mb-1">20-Day Program Progress</h2>
+                <p class="text-indigo-200 text-sm">Overall progress across 4 weeks (20 working days)</p>
+            </div>
+            <div class="text-right">
+                <p class="text-6xl font-black">{{ number_format($programProgressPercentage, 0) }}%</p>
+                <p class="text-indigo-200 text-sm mt-1">{{ number_format($totalCompletedHours, 1) }}h / {{ $targetHours }}h</p>
+            </div>
+        </div>
+        
+        <!-- Progress Bar -->
+        <div class="bg-white bg-opacity-20 backdrop-blur-sm rounded-full h-6 shadow-inner border-2 border-white border-opacity-30 overflow-hidden">
+            @if($programProgressPercentage > 0)
+                <div class="h-full rounded-full transition-all duration-1000 ease-out relative overflow-hidden"
+                     style="width: {{ $programProgressPercentage }}%; 
+                            background: linear-gradient(90deg, #4ade80 0%, #22c55e 50%, #16a34a 100%);
+                            box-shadow: 0 0 20px rgba(74, 222, 128, 0.7), inset 0 2px 4px rgba(255,255,255,0.3);">
+                    <!-- Shine effect -->
+                    <div class="absolute inset-0 opacity-30" style="background: linear-gradient(90deg, transparent 0%, white 50%, transparent 100%); animation: shimmer 2s infinite;"></div>
+                </div>
+            @else
+                <div class="h-full rounded-full bg-gray-600 bg-opacity-30" style="width: 2%;"></div>
+            @endif
+        </div>
+        
+        <!-- Stats -->
+        <div class="grid grid-cols-3 gap-4 mt-6">
+            <div class="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-4 border border-white border-opacity-20">
+                <p class="text-indigo-200 text-xs mb-1">Days Completed</p>
+                <p class="text-2xl font-bold">{{ $allProgress->where('progress_percentage', '>=', 100)->count() }} / 20</p>
+            </div>
+            <div class="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-4 border border-white border-opacity-20">
+                <p class="text-indigo-200 text-xs mb-1">Avg Daily Hours</p>
+                <p class="text-2xl font-bold">{{ $allProgress->count() > 0 ? number_format($totalCompletedHours / max($allProgress->count(), 1), 1) : 0 }}h</p>
+            </div>
+            <div class="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-4 border border-white border-opacity-20">
+                <p class="text-indigo-200 text-xs mb-1">Remaining</p>
+                <p class="text-2xl font-bold">{{ number_format(max($targetHours - $totalCompletedHours, 0), 1) }}h</p>
+            </div>
+        </div>
+    </div>
+
     <!-- Weekly Summary Card -->
     <div class="mb-6 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg shadow-lg p-6 text-white">
         <h2 class="text-xl font-bold mb-4">This Week's Progress</h2>
