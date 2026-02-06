@@ -17,12 +17,21 @@ class TesterAssignmentService
     public function findTestingTeamLeads(Workspace $workspace): \Illuminate\Database\Eloquent\Collection
     {
         // Get members from workspace with Testing track
+        // Track is stored in the pivot table (workspace_user.track_id)
+        $testingTracks = \App\Models\Track::where('workspace_id', $workspace->id)
+            ->where(function ($q) {
+                $q->where('name', 'Testing')
+                  ->orWhere('slug', 'testing');
+            })
+            ->pluck('id');
+
+        if ($testingTracks->isEmpty()) {
+            return collect();
+        }
+
         return $workspace->users()
             ->wherePivot('role', 'member')
-            ->whereHas('tracks', function ($query) {
-                $query->where('name', 'Testing')
-                    ->orWhere('slug', 'testing');
-            })
+            ->wherePivotIn('track_id', $testingTracks)
             ->get();
     }
 
@@ -129,12 +138,21 @@ class TesterAssignmentService
     public function getAvailableTesters(Workspace $workspace): \Illuminate\Database\Eloquent\Collection
     {
         // Get users with Testing track from workspace
+        // Track is stored in the pivot table (workspace_user.track_id)
+        $testingTracks = \App\Models\Track::where('workspace_id', $workspace->id)
+            ->where(function ($q) {
+                $q->where('name', 'Testing')
+                  ->orWhere('slug', 'testing');
+            })
+            ->pluck('id');
+
+        if ($testingTracks->isEmpty()) {
+            return collect();
+        }
+
         return $workspace->users()
             ->wherePivot('role', 'guest')
-            ->whereHas('tracks', function ($query) {
-                $query->where('name', 'Testing')
-                    ->orWhere('slug', 'testing');
-            })
+            ->wherePivotIn('track_id', $testingTracks)
             ->get();
     }
 
