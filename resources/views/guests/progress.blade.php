@@ -46,46 +46,47 @@
     @endphp
 
     <!-- 20-Day Program Progress Card -->
-    <div class="mb-6 bg-gradient-to-br from-purple-600 via-indigo-600 to-blue-600 rounded-xl shadow-2xl p-8 text-white">
+    <div class="mb-6 rounded-xl shadow-2xl p-8 text-white border-4 border-purple-700" style="background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 50%, #2563eb 100%);">
         <div class="flex items-center justify-between mb-6">
             <div>
-                <h2 class="text-2xl font-black mb-1">20-Day Program Progress</h2>
-                <p class="text-indigo-200 text-sm">Overall progress across 4 weeks (20 working days)</p>
+                <h2 class="text-3xl font-black mb-2 drop-shadow-lg">Program Progress</h2>
+                <p class="text-blue-100 text-base font-medium">Overall progress across 4 weeks</p>
             </div>
             <div class="text-right">
-                <p class="text-6xl font-black">{{ number_format($programProgressPercentage, 0) }}%</p>
-                <p class="text-indigo-200 text-sm mt-1">{{ number_format($totalCompletedHours, 1) }}h / {{ $targetHours }}h</p>
+                <p class="text-7xl font-black drop-shadow-2xl">{{ number_format($programProgressPercentage, 0) }}%</p>
             </div>
         </div>
         
         <!-- Progress Bar -->
-        <div class="bg-white bg-opacity-20 backdrop-blur-sm rounded-full h-6 shadow-inner border-2 border-white border-opacity-30 overflow-hidden">
+        <div class="bg-gray-700 bg-opacity-40 backdrop-blur-sm rounded-full h-6 shadow-inner border-2 border-white border-opacity-20 overflow-hidden mb-6">
             @if($programProgressPercentage > 0)
                 <div class="h-full rounded-full transition-all duration-1000 ease-out relative overflow-hidden"
                      style="width: {{ $programProgressPercentage }}%; 
                             background: linear-gradient(90deg, #4ade80 0%, #22c55e 50%, #16a34a 100%);
                             box-shadow: 0 0 20px rgba(74, 222, 128, 0.7), inset 0 2px 4px rgba(255,255,255,0.3);">
                     <!-- Shine effect -->
-                    <div class="absolute inset-0 opacity-30" style="background: linear-gradient(90deg, transparent 0%, white 50%, transparent 100%); animation: shimmer 2s infinite;"></div>
+                    <div class="absolute inset-0 opacity-30" style="background: linear-gradient(90deg, transparent 0%,  50%, transparent 100%); animation: shimmer 2s infinite;"></div>
                 </div>
             @else
                 <div class="h-full rounded-full bg-gray-600 bg-opacity-30" style="width: 2%;"></div>
             @endif
         </div>
         
-        <!-- Stats -->
-        <div class="grid grid-cols-3 gap-4 mt-6">
-            <div class="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-4 border border-white border-opacity-20">
-                <p class="text-indigo-200 text-xs mb-1">Days Completed</p>
-                <p class="text-2xl font-bold">{{ $allProgress->where('progress_percentage', '>=', 100)->count() }} / 20</p>
+        <!-- Stats - Only 2 columns now -->
+        <div class="grid grid-cols-2 gap-6">
+            <div class=" bg-opacity-15 backdrop-blur-md rounded-xl p-5 border-2 border-white border-opacity-25 shadow-lg">
+                <p class="text-blue-100 text-sm font-semibold mb-2">Total Hours</p>
+                <div class="flex items-baseline space-x-2">
+                    <p class="text-4xl font-black">{{ number_format($totalCompletedHours, 1) }}</p>
+                    <p class="text-2xl font-bold text-blue-200">/ {{ $targetHours }}h</p>
+                </div>
             </div>
-            <div class="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-4 border border-white border-opacity-20">
-                <p class="text-indigo-200 text-xs mb-1">Avg Daily Hours</p>
-                <p class="text-2xl font-bold">{{ $allProgress->count() > 0 ? number_format($totalCompletedHours / max($allProgress->count(), 1), 1) : 0 }}h</p>
-            </div>
-            <div class="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-4 border border-white border-opacity-20">
-                <p class="text-indigo-200 text-xs mb-1">Remaining</p>
-                <p class="text-2xl font-bold">{{ number_format(max($targetHours - $totalCompletedHours, 0), 1) }}h</p>
+            <div class=" bg-opacity-15 backdrop-blur-md rounded-xl p-5 border-2 border-white border-opacity-25 shadow-lg">
+                <p class="text-blue-100 text-sm font-semibold mb-2">Remaining</p>
+                <div class="flex items-baseline space-x-2">
+                    <p class="text-4xl font-black">{{ number_format(max($targetHours - $totalCompletedHours, 0), 1) }}</p>
+                    <p class="text-2xl font-bold text-blue-200">hours</p>
+                </div>
             </div>
         </div>
     </div>
@@ -136,7 +137,7 @@
                 <span class="font-medium">{{ number_format(($weeklySummary['total_hours'] / $weeklySummary['target_hours']) * 100, 0) }}%</span>
             </div>
             <div class="w-full bg-indigo-800 bg-opacity-30 rounded-full h-3">
-                <div class="bg-white h-3 rounded-full transition-all duration-500" 
+                <div class=" h-3 rounded-full transition-all duration-500" 
                      style="width: {{ min(($weeklySummary['total_hours'] / $weeklySummary['target_hours']) * 100, 100) }}%"></div>
             </div>
         </div>
@@ -145,7 +146,7 @@
     <!-- Today's Progress by Project -->
     <div class="space-y-6">
         @forelse($projectProgress as $item)
-        <div class="bg-white shadow rounded-lg overflow-hidden">
+        <div class=" shadow rounded-lg overflow-hidden">
             <!-- Project Header -->
             <div class="px-6 py-4 border-b border-gray-200" style="background-color: {{ $item['project']->color ?? '#6366f1' }}20">
                 <div class="flex items-center justify-between">
@@ -251,7 +252,7 @@
             </div>
         </div>
         @empty
-        <div class="bg-white shadow rounded-lg p-12 text-center">
+        <div class=" shadow rounded-lg p-12 text-center">
             <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
             </svg>
