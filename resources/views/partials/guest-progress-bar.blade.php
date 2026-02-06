@@ -27,48 +27,71 @@
     $targetHours = 20 * 6; // 20 working days × 6 hours = 120 hours
     $progressPercentage = min(($totalCompletedHours / $targetHours) * 100, 100);
     
-    // Count working days completed
-    $daysCompleted = $allProgress->where('progress_percentage', '>=', 100)->count();
-    $totalWorkingDays = 20; // 4 weeks × 5 days
+    // Status text based on progress
+    $statusText = $progressPercentage >= 100 ? 'Completed!' : 
+                  ($progressPercentage >= 75 ? 'Almost There' : 
+                  ($progressPercentage >= 50 ? 'Great Progress' : 
+                  ($progressPercentage >= 25 ? 'Keep Going' : 'Getting Started')));
+    
+    $statusColor = $progressPercentage >= 100 ? 'text-green-300' : 
+                   ($progressPercentage >= 75 ? 'text-blue-200' : 
+                   ($progressPercentage >= 50 ? 'text-yellow-200' : 'text-orange-200'));
 @endphp
 
-<div class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md">
+<div class="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white shadow-lg border-b-4 border-indigo-700">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="py-3">
+        <div class="py-2.5">
             <div class="flex items-center justify-between">
-                <!-- Left: Program Progress -->
-                <div class="flex items-center space-x-6">
-                    <div>
-                        <p class="text-xs text-indigo-100 mb-0.5">Program Progress (20 Days)</p>
-                        <div class="flex items-center space-x-3">
-                            <div class="w-48 bg-indigo-800 bg-opacity-40 rounded-full h-2.5">
-                                <div class="bg-white h-2.5 rounded-full transition-all duration-500 shadow-sm" 
-                                     style="width: {{ $progressPercentage }}%"></div>
-                            </div>
-                            <span class="text-sm font-bold">{{ number_format($progressPercentage, 0) }}%</span>
+                <!-- Left: Compact Progress Display -->
+                <div class="flex items-center space-x-5">
+                    <!-- Circular Progress -->
+                    <div class="relative w-14 h-14">
+                        <svg class="transform -rotate-90 w-14 h-14">
+                            <circle cx="28" cy="28" r="24" stroke="rgba(255,255,255,0.2)" stroke-width="4" fill="none" />
+                            <circle cx="28" cy="28" r="24" 
+                                    stroke="white" 
+                                    stroke-width="4" 
+                                    fill="none"
+                                    stroke-dasharray="{{ 2 * 3.14159 * 24 }}"
+                                    stroke-dashoffset="{{ 2 * 3.14159 * 24 * (1 - $progressPercentage / 100) }}"
+                                    stroke-linecap="round"
+                                    class="transition-all duration-500" />
+                        </svg>
+                        <div class="absolute inset-0 flex items-center justify-center">
+                            <span class="text-xs font-bold">{{ number_format($progressPercentage, 0) }}%</span>
                         </div>
                     </div>
                     
-                    <!-- Hours Stat -->
-                    <div class="border-l border-indigo-400 pl-6">
-                        <p class="text-xs text-indigo-100">Total Hours</p>
-                        <p class="text-lg font-bold">{{ number_format($totalCompletedHours, 1) }}<span class="text-sm font-normal text-indigo-200">/{{ $targetHours }}h</span></p>
-                    </div>
-                    
-                    <!-- Days Stat -->
-                    <div class="border-l border-indigo-400 pl-6">
-                        <p class="text-xs text-indigo-100">Days Completed</p>
-                        <p class="text-lg font-bold">{{ $daysCompleted }}<span class="text-sm font-normal text-indigo-200">/{{ $totalWorkingDays }}</span></p>
+                    <!-- Progress Info -->
+                    <div class="flex-1">
+                        <div class="flex items-baseline space-x-2 mb-1">
+                            <h3 class="text-base font-bold">Program Progress</h3>
+                            <span class="text-xs {{ $statusColor }} font-semibold">{{ $statusText }}</span>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <!-- Progress Bar -->
+                            <div class="w-64 bg-white bg-opacity-20 rounded-full h-2 shadow-inner">
+                                <div class="bg-gradient-to-r from-green-400 to-emerald-300 h-2 rounded-full transition-all duration-700 ease-out shadow-sm" 
+                                     style="width: {{ $progressPercentage }}%"></div>
+                            </div>
+                            <!-- Hours Badge -->
+                            <div class="inline-flex items-center px-3 py-1 bg-white bg-opacity-20 rounded-full">
+                                <svg class="h-3.5 w-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <span class="text-sm font-semibold">{{ number_format($totalCompletedHours, 1) }}h / {{ $targetHours }}h</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
-                <!-- Right: Quick Link -->
+                <!-- Right: Action Button -->
                 <a href="{{ route('guests.progress') }}" 
-                   class="inline-flex items-center px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg text-sm font-medium transition-all">
-                    <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                   class="inline-flex items-center px-4 py-2 bg-white text-indigo-600 rounded-lg text-sm font-semibold hover:bg-opacity-90 hover:shadow-lg transition-all transform hover:scale-105">
+                    <svg class="h-4 w-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
                     </svg>
-                    View Details
+                    Details
                 </a>
             </div>
         </div>

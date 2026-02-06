@@ -82,7 +82,7 @@ class DailyProgress extends Model
      */
     public function isApproved(): bool
     {
-        return $this->approved;
+        return (bool) $this->approved;
     }
 
     /**

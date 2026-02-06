@@ -255,6 +255,11 @@ class TaskService
         $assignees = $task->assignees;
         $taskDate = $task->assigned_date ?? $task->due_date ?? today();
         
+        // Ensure taskDate is a Carbon instance
+        if (!$taskDate instanceof \Carbon\Carbon) {
+            $taskDate = \Carbon\Carbon::parse($taskDate);
+        }
+        
         foreach ($assignees as $assignee) {
             $progressService = app(\App\Services\DailyProgressService::class);
             $progressService->calculateDailyProgress($assignee, $task->project, $taskDate);

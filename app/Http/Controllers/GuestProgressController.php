@@ -37,7 +37,12 @@ class GuestProgressController extends Controller
             })
             ->get();
 
-        $date = $request->date('date', today());
+        $date = $request->date('date') ?? today();
+        
+        // Ensure date is a Carbon instance
+        if (!$date instanceof \Carbon\Carbon) {
+            $date = \Carbon\Carbon::parse($date);
+        }
 
         // Get today's progress for each project
         $projectProgress = [];
