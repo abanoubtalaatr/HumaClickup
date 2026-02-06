@@ -283,7 +283,19 @@ function notificationBell() {
 
         async fetchNotifications() {
             try {
-                const response = await fetch('/notifications');
+                const response = await fetch('/notifications', {
+                    credentials: 'same-origin',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                });
+                
+                if (!response.ok) {
+                    console.error('Failed to fetch notifications:', response.status);
+                    return;
+                }
+                
                 const data = await response.json();
                 this.notifications = data.notifications || [];
                 this.unreadCount = data.unread_count || 0;
