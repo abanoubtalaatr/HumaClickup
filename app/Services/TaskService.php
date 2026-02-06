@@ -77,10 +77,11 @@ class TaskService
     {
         return DB::transaction(function () use ($task, $data, $user) {
             $oldValues = $task->toArray();
+            $oldStatus = $task->status; // Capture old status before any updates
 
             // Handle status change
             if (isset($data['status_id']) && $data['status_id'] !== $task->status_id) {
-                $this->handleStatusChange($task, $data['status_id'], $user);
+                $this->handleStatusChange($task, $data['status_id'], $oldStatus, $user);
             }
 
             // Update task
@@ -159,6 +160,7 @@ class TaskService
     {
         // return DB::transaction(function () use ($task, $statusId, $position, $user) {
             $oldStatusId = $task->status_id;
+            $oldStatus = $task->status; // Capture old status BEFORE update
             $positionValue = $position ?? ($task->project
                 ? $this->getNextPosition($task->project, $statusId)
                 : $this->getNextPositionForStatusWithoutProject($statusId));
@@ -173,8 +175,8 @@ class TaskService
 
             $task->refresh();
 
-            // Handle status change logic
-            $this->handleStatusChange($task, $statusId, $user);
+            // Handle status change logic (pass old status)
+            $this->handleStatusChange($task, $statusId, $oldStatus, $user);
 
             // Log activity (use current workspace when task has no workspace_id)
             $workspaceIdForLog = $task->workspace_id ?? session('current_workspace_id');
@@ -218,9 +220,8 @@ class TaskService
     /**
      * Handle status change logic
      */
-    protected function handleStatusChange(Task $task, int $newStatusId, User $user): void
+    protected function handleStatusChange(Task $task, int $newStatusId, $oldStatus, User $user): void
     {
-        $oldStatus = $task->status;
         $newStatus = \App\Models\CustomStatus::find($newStatusId);
 
         // If moving to "done" type status

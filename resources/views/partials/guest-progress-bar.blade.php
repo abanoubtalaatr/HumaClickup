@@ -92,17 +92,18 @@
                         
                         <!-- Progress Bar -->
                         <div class="flex items-center space-x-3">
-                            <div class="flex-1 bg-white bg-opacity-20 backdrop-blur-sm rounded-full h-4 shadow-inner border-2 border-white border-opacity-30 overflow-hidden">
-                                <div class="relative h-full">
-                                    <!-- Animated gradient progress -->
-                                    <div class="absolute inset-0 rounded-full transition-all duration-1000 ease-out"
-                                         style="width: {{ $progressPercentage > 0 ? $progressPercentage : 2 }}%; 
+                            <div class="flex-1 bg-gray-700 bg-opacity-40 backdrop-blur-sm rounded-full h-4 shadow-inner border-2 border-white border-opacity-20 overflow-hidden">
+                                @if($progressPercentage > 0)
+                                    <div class="h-full rounded-full transition-all duration-1000 ease-out relative overflow-hidden"
+                                         style="width: {{ $progressPercentage }}%; 
                                                 background: linear-gradient(90deg, #4ade80 0%, #22c55e 50%, #16a34a 100%);
                                                 box-shadow: 0 0 20px rgba(74, 222, 128, 0.7), inset 0 2px 4px rgba(255,255,255,0.3);">
                                         <!-- Shine effect -->
                                         <div class="absolute inset-0 opacity-30 animate-shimmer" style="background: linear-gradient(90deg, transparent 0%, white 50%, transparent 100%);"></div>
                                     </div>
-                                </div>
+                                @else
+                                    <div class="h-full rounded-full bg-gray-600 bg-opacity-30" style="width: 2%;"></div>
+                                @endif
                             </div>
                             
                             <!-- Hours Badge -->
