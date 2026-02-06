@@ -220,6 +220,7 @@ class TaskService
      */
     protected function handleStatusChange(Task $task, int $newStatusId, User $user): void
     {
+        $oldStatus = $task->status;
         $newStatus = \App\Models\CustomStatus::find($newStatusId);
 
         // If moving to "done" type status
@@ -243,6 +244,18 @@ class TaskService
 
             // Check if this unblocks other tasks
             $this->checkUnblockedTasks($task);
+        }
+        
+        // If moving FROM "done" type status to non-done status
+        elseif ($oldStatus && $oldStatus->type === 'done' && $newStatus && $newStatus->type !== 'done') {
+            // Clear completion timestamp
+            $task->update(['completion_date' => null]);
+            
+            // Trigger daily progress recalculation if this is a main task
+            // This will decrease the progress since task is no longer complete
+            if ($task->is_main_task === 'yes' && $task->project) {
+                $this->recalculateDailyProgress($task);
+            }
         }
     }
     
