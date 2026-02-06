@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class DailyProgress extends Model
 {
@@ -14,124 +15,126 @@ class DailyProgress extends Model
         'project_id',
         'user_id',
         'date',
-        'completed_tasks_count',
-        'total_hours',
+        'task_id',
+        'required_hours',
+        'completed_hours',
         'progress_percentage',
-        'notes',
+        'approved',
+        'approved_by_user_id',
+        'approved_at',
     ];
 
-    protected $casts = [
-        'date' => 'date',
-        'completed_tasks_count' => 'integer',
-        'total_hours' => 'decimal:2',
-        'progress_percentage' => 'decimal:2',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'date' => 'date',
+            'required_hours' => 'decimal:2',
+            'completed_hours' => 'decimal:2',
+            'progress_percentage' => 'decimal:2',
+            'approved' => 'boolean',
+            'approved_at' => 'datetime',
+        ];
+    }
 
-    /**
-     * Get the workspace.
-     */
+    // Relationships
     public function workspace(): BelongsTo
     {
         return $this->belongsTo(Workspace::class);
     }
 
-    /**
-     * Get the project.
-     */
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
     }
 
-    /**
-     * Get the user.
-     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    /**
-     * Scope for workspace.
-     */
-    public function scopeForWorkspace($query, int $workspaceId)
+    public function task(): BelongsTo
     {
-        return $query->where('workspace_id', $workspaceId);
+        return $this->belongsTo(Task::class);
+    }
+
+    public function approvedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by_user_id');
+    }
+
+    public function attendance(): HasOne
+    {
+        return $this->hasOne(Attendance::class, 'daily_progress_id');
+    }
+
+    // Helper Methods
+    
+    /**
+     * Check if this progress meets the daily target (100%).
+     */
+    public function meetsTarget(): bool
+    {
+        return $this->progress_percentage >= 100;
     }
 
     /**
-     * Scope for project.
+     * Check if progress is approved and locked.
      */
-    public function scopeForProject($query, int $projectId)
+    public function isApproved(): bool
     {
-        return $query->where('project_id', $projectId);
+        return $this->approved;
     }
 
     /**
-     * Scope for user.
+     * Check if progress can still be modified.
      */
-    public function scopeForUser($query, int $userId)
+    public function isLocked(): bool
     {
-        return $query->where('user_id', $userId);
+        return $this->approved;
     }
 
     /**
-     * Scope for date.
+     * Mark as approved by mentor.
      */
-    public function scopeForDate($query, $date)
+    public function approve(User $mentor): void
     {
-        return $query->whereDate('date', $date);
-    }
+        if ($this->approved) {
+            throw new \Exception('Progress is already approved and cannot be modified.');
+        }
 
-    /**
-     * Scope for this week.
-     */
-    public function scopeThisWeek($query)
-    {
-        return $query->whereBetween('date', [
-            now()->startOfWeek(),
-            now()->endOfWeek()
-        ]);
-    }
-
-    /**
-     * Scope for this month.
-     */
-    public function scopeThisMonth($query)
-    {
-        return $query->whereYear('date', now()->year)
-                     ->whereMonth('date', now()->month);
-    }
-
-    /**
-     * Check if the user met their daily target.
-     */
-    public function metDailyTarget(): bool
-    {
-        return $this->total_hours >= 6 && $this->completed_tasks_count >= 1;
-    }
-
-    /**
-     * Update progress with new completed task.
-     */
-    public function incrementCompletedTasks(float $hours): void
-    {
-        $this->increment('completed_tasks_count');
-        $this->increment('total_hours', $hours);
-        $this->recalculateProgress();
-    }
-
-    /**
-     * Recalculate progress percentage.
-     */
-    public function recalculateProgress(): void
-    {
-        // Progress is based on completing at least 1 task with 6+ hours
-        $baseProgress = ($this->completed_tasks_count > 0) ? 50 : 0;
-        $hoursProgress = min(50, ($this->total_hours / 6) * 50);
-        
         $this->update([
-            'progress_percentage' => min(100, $baseProgress + $hoursProgress)
+            'approved' => true,
+            'approved_by_user_id' => $mentor->id,
+            'approved_at' => now(),
         ]);
+    }
+
+    /**
+     * Calculate progress percentage from completed/required hours.
+     */
+    public function calculateProgress(): float
+    {
+        if ($this->required_hours == 0) {
+            return 0;
+        }
+
+        $percentage = ($this->completed_hours / $this->required_hours) * 100;
+        
+        // Cap at 100%
+        return min($percentage, 100);
+    }
+
+    /**
+     * Update progress metrics (for service layer).
+     */
+    public function updateProgress(float $completedHours): void
+    {
+        if ($this->isLocked()) {
+            throw new \Exception('Cannot update approved progress.');
+        }
+
+        $this->completed_hours = $completedHours;
+        $this->progress_percentage = $this->calculateProgress();
+        $this->save();
     }
 }

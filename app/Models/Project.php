@@ -144,6 +144,26 @@ class Project extends Model
         return $this->hasMany(Attendance::class);
     }
 
+    public function projectMembers(): HasMany
+    {
+        return $this->hasMany(ProjectMember::class);
+    }
+
+    public function guests()
+    {
+        return $this->projectMembers()->guests()->with('user', 'track');
+    }
+
+    public function projectTesters()
+    {
+        return $this->projectMembers()->testers()->with('user');
+    }
+
+    public function projectMentors()
+    {
+        return $this->projectMembers()->mentors()->with('user');
+    }
+
     // Helper Methods
     public function calculateProgress(): void
     {
@@ -314,11 +334,62 @@ class Project extends Model
     }
 
     /**
-     * Get team members from the assigned group.
+     * Get team members from the assigned group (legacy).
+     * 
+     * @deprecated Use getGuestMembers() instead
      */
     public function getTeamMembers()
     {
         return $this->group ? $this->group->guests : collect();
+    }
+
+    /**
+     * Get guest members from project_members table (NEW).
+     */
+    public function getGuestMembers()
+    {
+        return $this->guests()->get()->pluck('user');
+    }
+
+    /**
+     * Get number of guest members in this project.
+     */
+    public function getGuestsCount(): int
+    {
+        return $this->guests()->count();
+    }
+
+    /**
+     * Check if user is a guest member of this project.
+     */
+    public function hasGuestMember(User $user): bool
+    {
+        return $this->guests()->where('user_id', $user->id)->exists();
+    }
+
+    /**
+     * Add a guest member to the project.
+     */
+    public function addGuestMember(User $user, ?Track $track = null): ProjectMember
+    {
+        return $this->projectMembers()->create([
+            'user_id' => $user->id,
+            'role' => 'guest',
+            'track_id' => $track?->id,
+            'joined_at' => now(),
+        ]);
+    }
+
+    /**
+     * Add a tester to the project.
+     */
+    public function addTester(User $user): ProjectMember
+    {
+        return $this->projectMembers()->create([
+            'user_id' => $user->id,
+            'role' => 'tester',
+            'joined_at' => now(),
+        ]);
     }
 
     /**
