@@ -106,6 +106,12 @@ Route::middleware(['auth'])->group(function () {
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     
+    // Notification Routes (outside workspace middleware - user-specific)
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.api');
+    Route::get('/notifications/all', [NotificationController::class, 'all'])->name('notifications.index');
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
+    Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
+    
     // Workspace routes
     Route::prefix('workspaces')->name('workspaces.')->group(function () {
         Route::get('/', [WorkspaceController::class, 'index'])->name('index');
@@ -441,11 +447,5 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/projects/{project}/details', [OwnerDashboardController::class, 'showProject'])->name('project-details');
             Route::get('/guests-without-tasks', [OwnerDashboardController::class, 'guestsWithoutTasks'])->name('guests-without-tasks');
         });
-        
-        // Notification Routes
-        Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.api');
-        Route::get('/notifications/all', [NotificationController::class, 'all'])->name('notifications.index');
-        Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
-        Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
     });
 });
