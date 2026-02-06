@@ -36,10 +36,8 @@ return new class extends Migration
 
     private function indexExists($table, $name): bool
     {
-        $conn = Schema::getConnection();
-        $dbSchemaManager = $conn->getDoctrineSchemaManager();
-        $doctrineTable = $dbSchemaManager->introspectTable($table);
-        return $doctrineTable->hasIndex($name);
+        $indexes = DB::select("SHOW INDEX FROM {$table} WHERE Key_name = ?", [$name]);
+        return !empty($indexes);
     }
 
     /**
