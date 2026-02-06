@@ -10,16 +10,25 @@ class Attendance extends Model
 {
     protected $fillable = [
         'workspace_id',
+        'project_id',
         'guest_id',
         'date',
         'checked_in_at',
         'checked_out_at',
         'status',
+        'completed_hours',
+        'checked_by_mentor',
+        'mentor_id',
+        'mentor_checked_at',
+        'auto_marked',
         'notes',
     ];
 
     protected $casts = [
         'date' => 'date',
+        'mentor_checked_at' => 'datetime',
+        'checked_by_mentor' => 'boolean',
+        'completed_hours' => 'decimal:2',
     ];
 
     public function workspace(): BelongsTo
@@ -30,6 +39,16 @@ class Attendance extends Model
     public function guest(): BelongsTo
     {
         return $this->belongsTo(User::class, 'guest_id');
+    }
+
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(Project::class);
+    }
+
+    public function mentor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'mentor_id');
     }
 
     // Check if guest checked in
@@ -131,5 +150,40 @@ class Attendance extends Model
     {
         return $query->whereYear('date', now()->year)
                      ->whereMonth('date', now()->month);
+    }
+
+    public function scopeForProject($query, int $projectId)
+    {
+        return $query->where('project_id', $projectId);
+    }
+
+    public function scopePendingMentorCheck($query)
+    {
+        return $query->where('checked_by_mentor', false);
+    }
+
+    public function scopeAutoMarked($query)
+    {
+        return $query->where('auto_marked', 'yes');
+    }
+
+    /**
+     * Check if attendance meets the minimum hours requirement.
+     */
+    public function meetsMinimumHours(): bool
+    {
+        return $this->completed_hours >= 6;
+    }
+
+    /**
+     * Mark as checked by mentor.
+     */
+    public function markCheckedByMentor(User $mentor): void
+    {
+        $this->update([
+            'checked_by_mentor' => true,
+            'mentor_id' => $mentor->id,
+            'mentor_checked_at' => now(),
+        ]);
     }
 }
