@@ -4,11 +4,12 @@
 
 @push('styles')
 <style>
-    .sortable-fallback {
+    .sortable-drag {
         opacity: 0.9 !important;
         box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
-        transform: rotate(2deg);
-        z-index: 9999 !important;
+    }
+    .sortable-chosen {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
     }
     .kanban-column::-webkit-scrollbar {
         width: 6px;
@@ -176,10 +177,10 @@
         </div>
 
         <!-- Kanban Board -->
-        <div class="flex space-x-4 overflow-x-auto pb-4" style="height: calc(100vh - 220px); min-height: 500px;">
+        <div class="flex space-x-4 overflow-x-auto pb-4" style="min-height: 600px;">
             @forelse($statuses ?? [] as $status)
                 <div class="flex-shrink-0 w-80 bg-gray-100 rounded-lg p-4 flex flex-col" 
-                     data-status-id="{{ $status->id }}" style="max-height: 100%;">
+                     data-status-id="{{ $status->id }}" style="max-height: calc(100vh - 180px);">
                     <!-- Status Header -->
                     <div class="flex items-center justify-between mb-4 flex-shrink-0">
                         <div class="flex items-center">
@@ -678,9 +679,8 @@ function kanbanBoard() {
                             group: 'kanban',
                             animation: 150,
                             ghostClass: 'bg-blue-100',
-                            forceFallback: true,
-                            fallbackClass: 'sortable-fallback',
-                            fallbackOnBody: true,
+                            dragClass: 'sortable-drag',
+                            chosenClass: 'sortable-chosen',
                             scroll: true,
                             scrollSensitivity: 80,
                             scrollSpeed: 12,
