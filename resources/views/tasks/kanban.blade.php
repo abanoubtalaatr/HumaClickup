@@ -2,6 +2,30 @@
 
 @section('title', 'Kanban Board')
 
+@push('styles')
+<style>
+    .sortable-fallback {
+        opacity: 0.9 !important;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
+        transform: rotate(2deg);
+        z-index: 9999 !important;
+    }
+    .kanban-column::-webkit-scrollbar {
+        width: 6px;
+    }
+    .kanban-column::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .kanban-column::-webkit-scrollbar-thumb {
+        background-color: #d1d5db;
+        border-radius: 3px;
+    }
+    .kanban-column::-webkit-scrollbar-thumb:hover {
+        background-color: #9ca3af;
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8" 
      x-data="kanbanBoard()">
@@ -152,12 +176,12 @@
         </div>
 
         <!-- Kanban Board -->
-        <div class="flex space-x-4 overflow-x-auto pb-4" style="min-height: 600px;">
+        <div class="flex space-x-4 overflow-x-auto pb-4" style="height: calc(100vh - 220px); min-height: 500px;">
             @forelse($statuses ?? [] as $status)
-                <div class="flex-shrink-0 w-80 bg-gray-100 rounded-lg p-4" 
-                     data-status-id="{{ $status->id }}">
+                <div class="flex-shrink-0 w-80 bg-gray-100 rounded-lg p-4 flex flex-col" 
+                     data-status-id="{{ $status->id }}" style="max-height: 100%;">
                     <!-- Status Header -->
-                    <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center justify-between mb-4 flex-shrink-0">
                         <div class="flex items-center">
                             <div class="h-3 w-3 rounded-full mr-2" style="background-color: {{ $status->color }}"></div>
                             <h3 class="text-sm font-semibold text-gray-900">{{ $status->name }}</h3>
@@ -173,8 +197,8 @@
                         @endif
                     </div>
 
-                    <!-- Tasks Container -->
-                    <div class="space-y-3 kanban-column min-h-[200px]" data-status-id="{{ $status->id }}">
+                    <!-- Tasks Container (scrollable within column) -->
+                    <div class="space-y-3 kanban-column min-h-[200px] overflow-y-auto flex-1 pr-1" data-status-id="{{ $status->id }}">
                         @foreach($status->tasks ?? [] as $task)
                             @include('tasks.partials.task-card', ['task' => $task])
                         @endforeach
@@ -654,17 +678,20 @@ function kanbanBoard() {
                             group: 'kanban',
                             animation: 150,
                             ghostClass: 'bg-blue-100',
-                            scrollSensitivity: 100,
-                            scrollSpeed: 15,
+                            forceFallback: true,
+                            fallbackClass: 'sortable-fallback',
+                            fallbackOnBody: true,
+                            scroll: true,
+                            scrollSensitivity: 80,
+                            scrollSpeed: 12,
+                            bubbleScroll: true,
                             onEnd: (evt) => {
-                                // Use evt.to directly - SortableJS reliably tracks the target list
                                 var item = evt.item;
                                 var taskId = item.dataset.taskId;
                                 var fromList = evt.from;
                                 var toList = evt.to;
                                 var oldIndex = evt.oldIndex;
                                 var newIndex = evt.newIndex;
-                                // Get status from the target column (evt.to is always correct)
                                 var raw = toList.getAttribute('data-status-id');
                                 var newStatusId = raw ? parseInt(raw, 10) : null;
                                 if (!newStatusId || isNaN(newStatusId)) {
@@ -675,6 +702,10 @@ function kanbanBoard() {
                                 var csrfEl = document.querySelector('meta[name="csrf-token"]');
                                 var csrfToken = csrfEl ? csrfEl.getAttribute('content') : '';
                                 var payload = JSON.stringify({ status_id: newStatusId, position: newIndex });
+
+                                // Show a subtle loading indicator on the card
+                                item.style.opacity = '0.6';
+
                                 fetch(updateStatusUrl, {
                                     method: 'POST',
                                     credentials: 'same-origin',
@@ -689,7 +720,7 @@ function kanbanBoard() {
                                 .then(function(r) {
                                     if (r.status === 419) {
                                         alert('Session expired. Please refresh the page and try again.');
-                                        fromList.insertBefore(item, fromList.children[oldIndex] || null);
+                                        window.location.reload();
                                         return null;
                                     }
                                     if (r.status === 401) {
@@ -700,16 +731,24 @@ function kanbanBoard() {
                                 })
                                 .then(function(res) {
                                     if (!res) return;
+                                    item.style.opacity = '1';
                                     if (!res.ok || !res.data.success) {
-                                        fromList.insertBefore(item, fromList.children[oldIndex] || null);
-                                        if (res.data.message) alert(res.data.message);
-                                        else console.error('Status update failed:', res.status, res.data);
+                                        // Revert on failure - reload to ensure consistency
+                                        window.location.reload();
+                                    } else {
+                                        // Update task count badges
+                                        document.querySelectorAll('.kanban-column').forEach(function(col) {
+                                            var statusId = col.getAttribute('data-status-id');
+                                            var count = col.children.length;
+                                            var badge = col.closest('[data-status-id]').querySelector('.text-xs.text-gray-500');
+                                            if (badge) badge.textContent = '(' + count + ')';
+                                        });
                                     }
                                 })
                                 .catch(function(err) {
                                     console.error('Network error moving task:', err);
-                                    fromList.insertBefore(item, fromList.children[oldIndex] || null);
-                                    alert('Network error. Please check your connection and try again.');
+                                    // Reload to ensure frontend matches backend
+                                    window.location.reload();
                                 });
                             }
                         });
