@@ -654,23 +654,18 @@ function kanbanBoard() {
                             group: 'kanban',
                             animation: 150,
                             ghostClass: 'bg-blue-100',
+                            scrollSensitivity: 100,
+                            scrollSpeed: 15,
                             onEnd: (evt) => {
-                                // Capture everything immediately so rapid drags don't reuse evt
+                                // Use evt.to directly - SortableJS reliably tracks the target list
                                 var item = evt.item;
                                 var taskId = item.dataset.taskId;
                                 var fromList = evt.from;
+                                var toList = evt.to;
                                 var oldIndex = evt.oldIndex;
                                 var newIndex = evt.newIndex;
-                                // Find which column contains this item (no evt.to, no timing)
-                                var columns = document.querySelectorAll('.kanban-column');
-                                var targetColumn = null;
-                                for (var c = 0; c < columns.length; c++) {
-                                    if (columns[c].contains(item)) {
-                                        targetColumn = columns[c];
-                                        break;
-                                    }
-                                }
-                                var raw = targetColumn ? (targetColumn.getAttribute('data-status-id') || (targetColumn.dataset && targetColumn.dataset.statusId)) : null;
+                                // Get status from the target column (evt.to is always correct)
+                                var raw = toList.getAttribute('data-status-id');
                                 var newStatusId = raw ? parseInt(raw, 10) : null;
                                 if (!newStatusId || isNaN(newStatusId)) {
                                     fromList.insertBefore(item, fromList.children[oldIndex] || null);
