@@ -105,10 +105,11 @@ class ProjectController extends Controller
         $defaultStatuses = [
             ['name' => 'To Do', 'color' => '#94a3b8', 'type' => 'todo', 'order' => 0, 'is_default' => true, 'progress_contribution' => 0],
             ['name' => 'In Progress', 'color' => '#3b82f6', 'type' => 'in_progress', 'order' => 1, 'progress_contribution' => 25],
-            ['name' => 'In Review', 'color' => '#f59e0b', 'type' => 'in_progress', 'order' => 2, 'progress_contribution' => 50],
-            ['name' => 'Retest', 'color' => '#ec4899', 'type' => 'in_progress', 'order' => 3, 'progress_contribution' => 70],
-            ['name' => 'Blocked', 'color' => '#ef4444', 'type' => 'in_progress', 'order' => 4, 'progress_contribution' => 0],
-            ['name' => 'Closed', 'color' => '#10b981', 'type' => 'done', 'order' => 5, 'progress_contribution' => 100],
+            ['name' => 'Done', 'color' => '#10b981', 'type' => 'done', 'order' => 2, 'progress_contribution' => 100],
+            ['name' => 'In Review', 'color' => '#f59e0b', 'type' => 'in_progress', 'order' => 3, 'progress_contribution' => 50],
+            ['name' => 'Retest', 'color' => '#ec4899', 'type' => 'in_progress', 'order' => 4, 'progress_contribution' => 70],
+            ['name' => 'Blocked', 'color' => '#ef4444', 'type' => 'in_progress', 'order' => 5, 'progress_contribution' => 0],
+            ['name' => 'Closed', 'color' => '#22c55e', 'type' => 'done', 'order' => 6, 'progress_contribution' => 100],
         ];
 
         foreach ($defaultStatuses as $status) {
