@@ -678,26 +678,43 @@ function kanbanBoard() {
                                 }
                                 var updateStatusUrl = "{{ $updateStatusUrlTemplate }}".replace(/\/0\/status/, '/' + taskId + '/status');
                                 var csrfEl = document.querySelector('meta[name="csrf-token"]');
+                                var csrfToken = csrfEl ? csrfEl.getAttribute('content') : '';
                                 var payload = JSON.stringify({ status_id: newStatusId, position: newIndex });
                                 fetch(updateStatusUrl, {
                                     method: 'POST',
+                                    credentials: 'same-origin',
                                     headers: {
                                         'Content-Type': 'application/json',
                                         'Accept': 'application/json',
-                                        'X-CSRF-TOKEN': csrfEl ? csrfEl.getAttribute('content') : ''
+                                        'X-CSRF-TOKEN': csrfToken,
+                                        'X-Requested-With': 'XMLHttpRequest'
                                     },
                                     body: payload
                                 })
-                                .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+                                .then(function(r) {
+                                    if (r.status === 419) {
+                                        alert('Session expired. Please refresh the page and try again.');
+                                        fromList.insertBefore(item, fromList.children[oldIndex] || null);
+                                        return null;
+                                    }
+                                    if (r.status === 401) {
+                                        window.location.href = '/login';
+                                        return null;
+                                    }
+                                    return r.json().then(function(d) { return { ok: r.ok, status: r.status, data: d }; });
+                                })
                                 .then(function(res) {
+                                    if (!res) return;
                                     if (!res.ok || !res.data.success) {
                                         fromList.insertBefore(item, fromList.children[oldIndex] || null);
                                         if (res.data.message) alert(res.data.message);
+                                        else console.error('Status update failed:', res.status, res.data);
                                     }
                                 })
                                 .catch(function(err) {
-                                    console.error('Error:', err);
+                                    console.error('Network error moving task:', err);
                                     fromList.insertBefore(item, fromList.children[oldIndex] || null);
+                                    alert('Network error. Please check your connection and try again.');
                                 });
                             }
                         });
