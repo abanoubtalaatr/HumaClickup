@@ -180,7 +180,7 @@
         <div class="flex space-x-4 overflow-x-auto pb-4" style="min-height: 600px;">
             @forelse($statuses ?? [] as $status)
                 <div class="flex-shrink-0 w-80 bg-gray-100 rounded-lg p-4 flex flex-col" 
-                     data-status-id="{{ $status->id }}" style="max-height: calc(100vh - 100px);">
+                     data-status-id="{{ $status->id }}">
                     <!-- Status Header -->
                     <div class="flex items-center justify-between mb-4 flex-shrink-0">
                         <div class="flex items-center">
