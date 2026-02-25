@@ -20,6 +20,11 @@ use App\Http\Controllers\MentorDashboardController;
 use App\Http\Controllers\GuestProgressController;
 use App\Http\Controllers\OwnerDashboardController;
 use App\Http\Controllers\TesterAssignmentController;
+use App\Http\Controllers\PullRequestController;
+use App\Http\Controllers\FeedbackQuestionController;
+use App\Http\Controllers\GuestFeedbackController;
+use App\Http\Controllers\MentorKpiController;
+use App\Http\Controllers\GlobalSettingsController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -129,7 +134,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{workspace}/members/invite', [WorkspaceController::class, 'inviteMember'])->name('members.invite');
         Route::post('/{workspace}/members/assign-guests', [WorkspaceController::class, 'assignGuestsToMember'])->name('members.assign-guests');
         Route::put('/{workspace}/members/{user}', [WorkspaceController::class, 'updateMemberRole'])->name('members.update');
-        Route::delete('/{workspace}/members/{user}', [WorkspaceController::class, 'removeMember'])->name('members.remove');
+        Route::delete('/{workspace}/members/{targetUser}', [WorkspaceController::class, 'removeMember'])->name('members.remove');
         Route::get('/{workspace}/members/{user}/tasks', [WorkspaceController::class, 'getMemberTasks'])->name('members.tasks');
         
         // Track management routes (admin only)
@@ -251,6 +256,22 @@ Route::middleware(['auth'])->group(function () {
                 ->where('workspace_id', $workspaceId)
                 ->firstOrFail();
         });
+
+        // Bind pull_request to workspace scope
+        Route::bind('pull_request', function ($value) {
+            $workspaceId = session('current_workspace_id');
+            return \App\Models\PullRequest::where('id', $value)
+                ->where('workspace_id', $workspaceId)
+                ->firstOrFail();
+        });
+
+        // Bind feedback_question to workspace scope
+        Route::bind('feedback_question', function ($value) {
+            $workspaceId = session('current_workspace_id');
+            return \App\Models\FeedbackQuestion::where('id', $value)
+                ->where('workspace_id', $workspaceId)
+                ->firstOrFail();
+        });
         
         // Bind time_entry to workspace scope
         Route::bind('time_entry', function ($value) {
@@ -267,6 +288,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
         Route::get('/projects/{project}/edit', [ProjectController::class, 'edit'])->name('projects.edit');
         Route::put('/projects/{project}', [ProjectController::class, 'update'])->name('projects.update');
+        Route::put('/projects/{project}/update-with-tasks', [ProjectController::class, 'updateWithTasks'])->name('projects.update-with-tasks');
         Route::delete('/projects/{project}', [ProjectController::class, 'destroy'])->name('projects.destroy');
         Route::get('/projects/{project}/assign-testers', [TesterAssignmentController::class, 'create'])->name('projects.assign-testers');
         Route::post('/projects/{project}/assign-testers', [TesterAssignmentController::class, 'store'])->name('projects.store-testers');
@@ -281,6 +303,7 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
         Route::delete('/tasks/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
         Route::post('/tasks/{task}/status', [TaskController::class, 'updateStatus'])->name('tasks.updateStatus');
+        Route::post('/tasks/{task}/bugs', [TaskController::class, 'storeBug'])->name('tasks.bugs.store');
         Route::post('/tasks/{task}/comments', [CommentController::class, 'store'])->name('tasks.comments.store');
         
         // Bugs routes
@@ -292,6 +315,20 @@ Route::middleware(['auth'])->group(function () {
         
         // Daily Statuses routes
         Route::resource('daily-statuses', DailyStatusController::class);
+
+        // Pull Requests routes
+        Route::resource('pull-requests', PullRequestController::class)->parameters(['pull-requests' => 'pull_request']);
+
+        // Mentor KPI & Guest Feedback
+        Route::get('/kpi', [MentorKpiController::class, 'index'])->name('kpi.index');
+        Route::get('/kpi/mentor/{mentorId}', [MentorKpiController::class, 'show'])->name('kpi.show');
+        Route::get('/feedback', [GuestFeedbackController::class, 'create'])->name('guest-feedback.create');
+        Route::post('/feedback', [GuestFeedbackController::class, 'store'])->name('guest-feedback.store');
+        Route::resource('feedback-questions', FeedbackQuestionController::class)->parameters(['feedback-questions' => 'feedback_question'])->only(['index', 'create', 'store', 'edit', 'update', 'destroy']);
+
+        // Global Settings (Admin / Owner only; controller enforces)
+        Route::get('/settings', [GlobalSettingsController::class, 'index'])->name('settings.index');
+        Route::put('/settings', [GlobalSettingsController::class, 'update'])->name('settings.update');
         
         // API endpoint for getting assignable users (used in task creation)
         Route::get('/api/assignable-users', [TaskController::class, 'getAssignableUsers'])->name('api.assignable-users');

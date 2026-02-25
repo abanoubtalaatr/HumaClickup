@@ -110,7 +110,7 @@
     <div class="mb-6 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-lg shadow-lg p-6 text-white">
         <h2 class="text-xl font-bold mb-4">This Week's Progress</h2>
         
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <!-- Total Hours -->
             <div>
                 <p class="text-indigo-100 text-sm mb-1">Total Hours</p>
@@ -122,6 +122,13 @@
             <div>
                 <p class="text-indigo-100 text-sm mb-1">Average Progress</p>
                 <p class="text-4xl font-bold">{{ number_format($weeklySummary['average_progress'], 0) }}%</p>
+            </div>
+
+            <!-- Absence (task-based) -->
+            <div>
+                <p class="text-indigo-100 text-sm mb-1">Absence days (overdue tasks)</p>
+                <p class="text-4xl font-bold">{{ $totalAbsenceDays ?? 0 }}</p>
+                <a href="{{ route('attendance.index') }}" class="text-sm text-indigo-200 hover:underline mt-1 inline-block">View attendance →</a>
             </div>
 
             <!-- Status -->

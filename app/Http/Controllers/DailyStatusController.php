@@ -15,7 +15,8 @@ class DailyStatusController extends Controller
     {
         $workspaceId = session('current_workspace_id');
         $user = auth()->user();
-        
+
+        $member = $user->isMemberOnlyInWorkspace($workspaceId);
         if (!$workspaceId) {
             return redirect()->route('workspaces.index');
         }
@@ -25,10 +26,14 @@ class DailyStatusController extends Controller
 
         // Owner sees all statuses in the workspace; others see only their own
         $query = DailyStatus::where('workspace_id', $workspaceId);
-        if (!$isOwner) {
+        
+        if($isGuest){
             $query->where('user_id', $user->id);
         }
+        if($member){
 
+            $query->whereIn('user_id', $user->getCreatedGuestsInWorkspace($workspaceId)->pluck('id')->toArray());
+        }
         // Filter by date if provided
         if ($request->filled('date')) {
             $query->where('date', $request->date);

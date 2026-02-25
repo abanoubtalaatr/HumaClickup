@@ -8,6 +8,7 @@ use App\Models\Track;
 use App\Models\Workspace;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
+use App\Models\WorkspaceUser;
 use Illuminate\Support\Facades\Log;
 
 class WorkspaceController extends Controller
@@ -135,6 +136,7 @@ class WorkspaceController extends Controller
 
     public function destroy(Workspace $workspace)
     {
+        
         $this->authorize('delete', $workspace);
 
         $workspace->delete();
@@ -458,7 +460,7 @@ class WorkspaceController extends Controller
         //     }
         // }
 
-        // $workspace->removeMember($targetUser);
+        WorkspaceUser::where('workspace_id', $workspace->id)->where('user_id', $targetUser->id)->delete();
 
         return back()->with('success', "Successfully removed {$targetUser->name} from the workspace.");
     }

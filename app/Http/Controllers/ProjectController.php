@@ -40,9 +40,27 @@ class ProjectController extends Controller
                 ->whereHas('tasks', function ($query) use ($user) {
                     $query->whereHas('assignees', fn($q) => $q->where('user_id', $user->id));
                 })
-                ->withCount(['tasks' => function ($query) use ($user) {
-                    $query->whereHas('assignees', fn($q) => $q->where('user_id', $user->id));
-                }])
+                ->withCount([
+                    'tasks' => function ($query) use ($user) {
+                        $query->whereHas('assignees', fn($q) => $q->where('user_id', $user->id));
+                    },
+                    'tasks as bugs_count' => fn($q) => $q->where('type', 'bug'),
+                    'comments',
+                ])
+                ->with(['space', 'createdBy'])
+                ->orderBy('updated_at', 'desc')
+                ->get();
+        }elseif($tester && $user->hasTestingTrackInWorkspace($workspaceId) && $user->isGuestInWorkspace($workspaceId)) {
+            $projects = Project::where('workspace_id', $workspaceId)
+            ->whereHas('testers', function ($query) use ($user) {
+                $query->where('tester_id', $user->id);
+            })
+                ->where('is_archived', false)
+                ->withCount([
+                    'tasks',
+                    'tasks as bugs_count' => fn($q) => $q->where('type', 'bug'),
+                    'comments',
+                ])
                 ->with(['space', 'createdBy'])
                 ->orderBy('updated_at', 'desc')
                 ->get();
@@ -53,7 +71,11 @@ class ProjectController extends Controller
             || $user->hasTestingTrackInWorkspace($workspaceId)) {
             $projects = Project::where('workspace_id', $workspaceId)
                 ->where('is_archived', false)
-                ->withCount('tasks')
+                ->withCount([
+                    'tasks',
+                    'tasks as bugs_count' => fn($q) => $q->where('type', 'bug'),
+                    'comments',
+                ])
                 ->with(['space', 'createdBy'])
                 ->orderBy('updated_at', 'desc')
                 ->get();
@@ -63,7 +85,11 @@ class ProjectController extends Controller
             $projects = Project::where('workspace_id', $workspaceId)
                 ->where('is_archived', false)
                 ->where('created_by_user_id', $user->id)
-                ->withCount('tasks')
+                ->withCount([
+                    'tasks',
+                    'tasks as bugs_count' => fn($q) => $q->where('type', 'bug'),
+                    'comments',
+                ])
                 ->with(['space', 'createdBy'])
                 ->orderBy('updated_at', 'desc')
                 ->get();
@@ -410,6 +436,14 @@ class ProjectController extends Controller
             'tasks',
             'tasks as completed_tasks_count' => fn($q) => $q->whereHas('status', fn($sq) => $sq->where('type', 'done'))
         ]);
+        
+        // Eager load relationships on already-instantiated model
+        $project->load([
+            'projectMembers.user',
+            'projectMembers.track',
+            'testers.tester',        // project_testers table (the actual assigned testers)
+            'createdBy',
+        ]);
 
         // Calculate time logged
         $timeEntries = $project->tasks()
@@ -433,11 +467,95 @@ class ProjectController extends Controller
         
         $this->authorize('update', $project);
         
-        $workspaceId = session('current_workspace_id');
         $workspace = Workspace::find($workspaceId);
         $spaces = $workspace?->spaces ?? collect();
+        $user = auth()->user();
 
-        return view('projects.edit', compact('project', 'spaces'));
+        // Get guests based on user role
+        if ($user->isMemberOnlyInWorkspace($workspaceId)) {
+            $guests = $workspace->guestsCreatedBy($user->id)->get();
+        } else {
+            $guests = $workspace->users()
+                ->wherePivot('role', 'guest')
+                ->get();
+        }
+
+        // Get groups based on user role
+        if ($user->isMemberOnlyInWorkspace($workspaceId)) {
+            $groups = \App\Models\Group::where('workspace_id', $workspaceId)
+                ->where('created_by_user_id', $user->id)
+                ->with('guests')
+                ->get();
+        } else {
+            $groups = \App\Models\Group::where('workspace_id', $workspaceId)
+                ->with('guests')
+                ->get();
+        }
+
+        // Get all tracks
+        $tracks = Track::where('workspace_id', $workspaceId)->get();
+
+        // Load existing project guests
+        $projectGuests = $project->guests()->with('user', 'track')->get()->map(function ($pm) {
+            return [
+                'user_id' => $pm->user_id,
+                'name' => $pm->user->name,
+                'track_id' => $pm->track_id,
+            ];
+        });
+
+        // Load existing main tasks with subtasks, grouped by guest
+        $existingTasks = $project->tasks()
+            ->where('is_main_task', 'yes')
+            ->with(['subtasks' => function ($q) {
+                $q->orderBy('id');
+            }, 'assignees'])
+            ->orderBy('assigned_date')
+            ->orderBy('id')
+            ->get()
+            ->map(function ($task) use ($project) {
+                $assignee = $task->assignees->first();
+                
+                // Calculate working day number from project start
+                $dayNumber = 1;
+                if ($task->assigned_date && $project->start_date) {
+                    $current = $project->start_date->copy();
+                    $workingDay = 0;
+                    while ($current->lte($task->assigned_date)) {
+                        if (!in_array($current->dayOfWeek, [5, 6])) {
+                            $workingDay++;
+                        }
+                        if ($current->isSameDay($task->assigned_date)) break;
+                        $current->addDay();
+                    }
+                    $dayNumber = max(1, $workingDay);
+                }
+                
+                return [
+                    'db_id' => $task->id,
+                    'guest_user_id' => $assignee ? $assignee->id : null,
+                    'guest_name' => $assignee ? $assignee->name : 'Unassigned',
+                    'track_id' => null,
+                    'day_number' => $dayNumber,
+                    'title' => $task->title,
+                    'description' => $task->description ?? '',
+                    'estimated_hours' => (float) ($task->estimated_time ?? 6),
+                    'status' => $task->status?->name ?? 'To Do',
+                    'subtasks' => $task->subtasks->map(function ($st) {
+                        return [
+                            'db_id' => $st->id,
+                            'title' => $st->title,
+                            'description' => $st->description ?? '',
+                            'estimated_hours' => (float) ($st->estimated_time ?? 0),
+                        ];
+                    })->values()->toArray(),
+                ];
+            });
+
+        return view('projects.edit-wizard', compact(
+            'project', 'spaces', 'guests', 'groups', 'tracks',
+            'projectGuests', 'existingTasks'
+        ));
     }
 
     public function update(Request $request, Project $project)
@@ -464,6 +582,280 @@ class ProjectController extends Controller
 
         return redirect()->route('projects.show', $project)
             ->with('success', 'Project updated successfully.');
+    }
+
+    /**
+     * Update project with all main tasks and subtasks in one transaction.
+     * This is the edit wizard endpoint.
+     */
+    public function updateWithTasks(Request $request, Project $project)
+    {
+        $workspaceId = session('current_workspace_id');
+        if ($project->workspace_id !== $workspaceId) {
+            return response()->json(['success' => false, 'message' => 'Project not found.'], 404);
+        }
+
+        $this->authorize('update', $project);
+        $user = auth()->user();
+
+        // Validate the entire payload
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'start_date' => 'required|date',
+            'total_days' => 'required|integer|min:1|max:365',
+            'exclude_weekends' => 'boolean',
+            'guest_members' => 'required|array|min:1',
+            'guest_members.*.user_id' => 'required|exists:users,id',
+            'guest_members.*.track_id' => 'nullable|exists:tracks,id',
+            'main_tasks' => 'required|array|min:1',
+            'main_tasks.*.db_id' => 'nullable|integer',
+            'main_tasks.*.title' => 'required|string|max:255',
+            'main_tasks.*.description' => 'nullable|string',
+            'main_tasks.*.guest_user_id' => 'required|exists:users,id',
+            'main_tasks.*.day_number' => 'required|integer|min:1',
+            'main_tasks.*.estimated_hours' => 'required|numeric|min:6',
+            'main_tasks.*.subtasks' => 'nullable|array',
+            'main_tasks.*.subtasks.*.db_id' => 'nullable|integer',
+            'main_tasks.*.subtasks.*.title' => 'required|string|max:255',
+            'main_tasks.*.subtasks.*.description' => 'nullable|string',
+            'main_tasks.*.subtasks.*.estimated_hours' => 'required|numeric|min:0.5',
+        ]);
+
+        try {
+            return DB::transaction(function () use ($validated, $project, $workspaceId, $user) {
+                // 1. Update project basic info
+                $project->update([
+                    'name' => $validated['name'],
+                    'description' => $validated['description'] ?? null,
+                ]);
+
+                // 2. Calculate new dates
+                $startDate = \Carbon\Carbon::parse($validated['start_date']);
+                $excludeWeekends = $validated['exclude_weekends'] ?? true;
+                $totalDays = $validated['total_days'];
+                $endDate = $this->planningService->calculateEndDate($startDate, $totalDays, $excludeWeekends);
+                $workingDays = $this->planningService->calculateWorkingDays($startDate, $endDate, $excludeWeekends);
+
+                // 3. Sync guest members
+                $newGuestIds = collect($validated['guest_members'])->pluck('user_id')->toArray();
+                $existingGuestIds = $project->guests()->pluck('user_id')->toArray();
+
+                // Remove guests that were deselected (and their tasks)
+                $removedGuestIds = array_diff($existingGuestIds, $newGuestIds);
+                if (!empty($removedGuestIds)) {
+                    // Delete tasks assigned to removed guests
+                    $tasksToDelete = $project->tasks()
+                        ->whereHas('assignees', function ($q) use ($removedGuestIds) {
+                            $q->whereIn('user_id', $removedGuestIds);
+                        })->get();
+                    
+                    foreach ($tasksToDelete as $task) {
+                        // Delete subtasks first
+                        $task->subtasks()->delete();
+                        $task->assignees()->detach();
+                        $task->delete();
+                    }
+
+                    // Remove project member records
+                    $project->projectMembers()
+                        ->where('role', 'guest')
+                        ->whereIn('user_id', $removedGuestIds)
+                        ->delete();
+                }
+
+                // Add new guests
+                $addedGuestIds = array_diff($newGuestIds, $existingGuestIds);
+                foreach ($validated['guest_members'] as $guestData) {
+                    if (in_array($guestData['user_id'], $addedGuestIds)) {
+                        $guestUser = User::findOrFail($guestData['user_id']);
+                        $track = isset($guestData['track_id']) ? \App\Models\Track::find($guestData['track_id']) : null;
+                        $project->addGuestMember($guestUser, $track);
+                    }
+                }
+
+                // 4. Update project planning fields
+                $requiredMainTasks = count($newGuestIds) * $workingDays;
+                $project->update([
+                    'start_date' => $startDate,
+                    'end_date' => $endDate,
+                    'total_days' => $totalDays,
+                    'working_days' => $workingDays,
+                    'exclude_weekends' => $excludeWeekends,
+                    'required_main_tasks_count' => $requiredMainTasks,
+                    'min_task_hours' => 6,
+                    'bug_time_allocation_percentage' => 20,
+                    'weekly_hours_target' => 30,
+                ]);
+
+                $todoStatus = $project->customStatuses()->where('type', 'todo')->first();
+
+                // 5. Track which existing task IDs are still in the payload
+                $keepTaskDbIds = collect($validated['main_tasks'])
+                    ->pluck('db_id')
+                    ->filter()
+                    ->toArray();
+
+                // 6. Delete tasks that are no longer in the payload (only main tasks that belong to remaining guests)
+                $remainingMainTasks = $project->tasks()
+                    ->where('is_main_task', 'yes')
+                    ->whereHas('assignees', function ($q) use ($newGuestIds) {
+                        $q->whereIn('user_id', $newGuestIds);
+                    })
+                    ->whereNotIn('id', $keepTaskDbIds)
+                    ->get();
+
+                foreach ($remainingMainTasks as $task) {
+                    $task->subtasks()->delete();
+                    $task->assignees()->detach();
+                    $task->delete();
+                }
+
+                // 7. Create/Update main tasks
+                foreach ($validated['main_tasks'] as $taskData) {
+                    $taskDate = $this->calculateTaskDate($startDate, $taskData['day_number'] - 1, $excludeWeekends);
+
+                    if (!empty($taskData['db_id'])) {
+                        // Update existing task
+                        $mainTask = Task::find($taskData['db_id']);
+                        if ($mainTask && $mainTask->project_id === $project->id) {
+                            $mainTask->update([
+                                'title' => $taskData['title'],
+                                'description' => $taskData['description'] ?? null,
+                                'estimated_time' => $taskData['estimated_hours'],
+                                'assigned_date' => $taskDate,
+                                'due_date' => $taskDate->copy()->setTime(23, 0, 0),
+                            ]);
+
+                            // Update assignee if changed
+                            $currentAssignee = $mainTask->assignees()->first();
+                            if (!$currentAssignee || $currentAssignee->id !== $taskData['guest_user_id']) {
+                                $mainTask->assignees()->sync([$taskData['guest_user_id']]);
+                                
+                                // Notify new assignee
+                                $assignedGuest = User::find($taskData['guest_user_id']);
+                                if ($assignedGuest) {
+                                    $assignedGuest->notify(new TaskAssignedNotification($mainTask, $user));
+                                }
+                            }
+
+                            // Update bug time limit
+                            $mainTask->update(['bug_time_limit' => $mainTask->calculateBugTimeLimit()]);
+
+                            // Handle subtasks
+                            $this->syncSubtasks($mainTask, $taskData['subtasks'] ?? [], $workspaceId, $project, $user, $todoStatus, $taskDate, $taskData['guest_user_id']);
+                        }
+                    } else {
+                        // Create new task
+                        $mainTask = Task::create([
+                            'workspace_id' => $workspaceId,
+                            'project_id' => $project->id,
+                            'creator_id' => $user->id,
+                            'title' => $taskData['title'],
+                            'description' => $taskData['description'] ?? null,
+                            'estimated_time' => $taskData['estimated_hours'],
+                            'status_id' => $todoStatus?->id,
+                            'is_main_task' => 'yes',
+                            'assigned_date' => $taskDate,
+                            'due_date' => $taskDate->copy()->setTime(23, 0, 0),
+                            'priority' => 'high',
+                        ]);
+
+                        $mainTask->assignees()->attach($taskData['guest_user_id']);
+
+                        // Notify assigned guest
+                        $assignedGuest = User::find($taskData['guest_user_id']);
+                        if ($assignedGuest) {
+                            $assignedGuest->notify(new TaskAssignedNotification($mainTask, $user));
+                        }
+
+                        $mainTask->update(['bug_time_limit' => $mainTask->calculateBugTimeLimit()]);
+
+                        // Create subtasks
+                        if (!empty($taskData['subtasks'])) {
+                            foreach ($taskData['subtasks'] as $subtaskData) {
+                                $subtask = Task::create([
+                                    'workspace_id' => $workspaceId,
+                                    'project_id' => $project->id,
+                                    'parent_id' => $mainTask->id,
+                                    'creator_id' => $user->id,
+                                    'title' => $subtaskData['title'],
+                                    'description' => $subtaskData['description'] ?? null,
+                                    'estimated_time' => $subtaskData['estimated_hours'],
+                                    'status_id' => $todoStatus?->id,
+                                    'is_main_task' => 'no',
+                                    'assigned_date' => $taskDate,
+                                    'due_date' => $taskDate->copy()->setTime(23, 0, 0),
+                                ]);
+                                $subtask->assignees()->attach($taskData['guest_user_id']);
+                            }
+                        }
+                    }
+                }
+
+                // 8. Update main tasks count
+                $this->planningService->updateMainTasksStatus($project);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Project updated successfully!',
+                    'redirect' => route('projects.show', $project),
+                ]);
+            });
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update project: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Sync subtasks for a main task during edit.
+     */
+    private function syncSubtasks(Task $mainTask, array $subtasksData, $workspaceId, Project $project, $user, $todoStatus, $taskDate, $guestUserId)
+    {
+        // Delete subtasks that are no longer in the payload
+        $payloadSubtaskIds = collect($subtasksData)->pluck('db_id')->filter()->toArray();
+        $mainTask->subtasks()
+            ->whereNotIn('id', $payloadSubtaskIds)
+            ->each(function ($subtask) {
+                $subtask->assignees()->detach();
+                $subtask->delete();
+            });
+
+        // Create or update subtasks
+        foreach ($subtasksData as $subtaskData) {
+            if (!empty($subtaskData['db_id'])) {
+                // Update existing subtask
+                $subtask = Task::find($subtaskData['db_id']);
+                if ($subtask && $subtask->parent_id === $mainTask->id) {
+                    $subtask->update([
+                        'title' => $subtaskData['title'],
+                        'description' => $subtaskData['description'] ?? null,
+                        'estimated_time' => $subtaskData['estimated_hours'],
+                        'assigned_date' => $taskDate,
+                        'due_date' => $taskDate->copy()->setTime(23, 0, 0),
+                    ]);
+                }
+            } else {
+                // Create new subtask
+                $subtask = Task::create([
+                    'workspace_id' => $workspaceId,
+                    'project_id' => $project->id,
+                    'parent_id' => $mainTask->id,
+                    'creator_id' => $user->id,
+                    'title' => $subtaskData['title'],
+                    'description' => $subtaskData['description'] ?? null,
+                    'estimated_time' => $subtaskData['estimated_hours'],
+                    'status_id' => $todoStatus?->id,
+                    'is_main_task' => 'no',
+                    'assigned_date' => $taskDate,
+                    'due_date' => $taskDate->copy()->setTime(23, 0, 0),
+                ]);
+                $subtask->assignees()->attach($guestUserId);
+            }
+        }
     }
 
     public function destroy(Project $project)

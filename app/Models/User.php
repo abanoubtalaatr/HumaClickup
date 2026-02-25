@@ -183,6 +183,18 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the track name for this user in a workspace (uses current workspace from session if not passed).
+     */
+    public function getTrackNameInWorkspace(?int $workspaceId = null): ?string
+    {
+        $workspaceId = $workspaceId ?? session('current_workspace_id');
+        if (!$workspaceId) {
+            return null;
+        }
+        $track = $this->getTrackInWorkspace($workspaceId);
+        return $track?->name;
+    }
+    /**
      * Get the pivot data for a specific workspace
      */
     public function getWorkspacePivot(int $workspaceId)
@@ -360,12 +372,32 @@ class User extends Authenticatable
         return $track && strtolower($track->name) === 'testing';
     }
 
+    /** Track names (case-insensitive) that can use Pull Requests when no track_ids config */
+    private const PULL_REQUEST_TRACK_NAMES = ['backend', 'frontend', 'mobile'];
+
+    /**
+     * Check if user's track in workspace is allowed for Pull Requests (by config track_ids or names: backend, frontend, mobile).
+     */
+    public function hasPullRequestTrackInWorkspace(int $workspaceId): bool
+    {
+        $trackId = $this->getTrackIdInWorkspace($workspaceId);
+        $trackIds = config('pull_requests.track_ids', []);
+        if (!empty($trackIds)) {
+            return $trackId && in_array((int) $trackId, array_map('intval', $trackIds), true);
+        }
+        $track = $this->getTrackInWorkspace($workspaceId);
+        if (!$track) {
+            return false;
+        }
+        return in_array(strtolower(trim($track->name ?? '')), self::PULL_REQUEST_TRACK_NAMES, true);
+    }
+
     /**
      * Check if member can see all projects/tasks (admin or testing track member)
      */
     public function canSeeAllProjectsInWorkspace(int $workspaceId): bool
     {
-        return $this->isAdminInWorkspace($workspaceId) 
+        return $this->isAdminInWorkspace($workspaceId)
             || $this->isOwnerInWorkspace($workspaceId)
             || ($this->isMemberOnlyInWorkspace($workspaceId) && $this->hasTestingTrackInWorkspace($workspaceId));
     }

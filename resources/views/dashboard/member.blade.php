@@ -207,7 +207,7 @@
         @endif
 
         <!-- Estimation Polling Overview -->
-        @if($estimationPollingTasks->count() > 0)
+        {{-- @if($estimationPollingTasks->count() > 0)
         <div class="mb-6 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-6" x-data="{ expanded: false, editingTask: null, editHours: 0, editMinutes: 0 }">
             <div class="flex items-center justify-between mb-4">
                 <div class="flex items-center space-x-3">
@@ -339,7 +339,7 @@
                 </div>
             @endif
         </div>
-        @endif
+        @endif --}}
 
         <!-- My Time This Week -->
         <div class="mb-6 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl p-6 text-white">

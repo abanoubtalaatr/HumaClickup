@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Project;
 use App\Services\DailyProgressService;
 use App\Services\AttendanceService;
+use App\Services\AbsenceTrackingService;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
@@ -12,13 +13,16 @@ class GuestProgressController extends Controller
 {
     protected DailyProgressService $progressService;
     protected AttendanceService $attendanceService;
+    protected AbsenceTrackingService $absenceTrackingService;
 
     public function __construct(
         DailyProgressService $progressService,
-        AttendanceService $attendanceService
+        AttendanceService $attendanceService,
+        AbsenceTrackingService $absenceTrackingService
     ) {
         $this->progressService = $progressService;
         $this->attendanceService = $attendanceService;
+        $this->absenceTrackingService = $absenceTrackingService;
     }
 
     /**
@@ -84,10 +88,13 @@ class GuestProgressController extends Controller
             'target_hours' => 30,
         ];
 
+        $totalAbsenceDays = $this->absenceTrackingService->getTotalAbsenceDaysForGuest($workspaceId, $user->id);
+
         return view('guests.progress', compact(
             'projectProgress',
             'weeklySummary',
-            'date'
+            'date',
+            'totalAbsenceDays'
         ));
     }
 

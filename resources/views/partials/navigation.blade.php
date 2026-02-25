@@ -9,70 +9,85 @@
                     </a>
                 </div>
 
-                <!-- Navigation Links -->
-                <div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+                <!-- Navigation Links (grouped) -->
+                <div class="hidden sm:ml-6 sm:flex sm:items-center sm:space-x-1">
                     @auth
                         @if(session('current_workspace_id'))
-                            <a href="{{ route('dashboard') }}" 
-                               class="{{ request()->routeIs('dashboard') ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                                Dashboard
-                            </a>
-                            <a href="{{ route('projects.index') }}" 
-                               class="{{ request()->routeIs('projects.*') ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                                Projects
-                            </a>
-                            {{-- Tasks tab hidden - access only through projects --}}
-                            {{-- <a href="{{ route('tasks.index') }}" 
-                               class="{{ request()->routeIs('tasks.*') ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                                Tasks
-                            </a> --}}
-                            <a href="{{ route('bugs.index') }}" 
-                               class="{{ request()->routeIs('bugs.*') ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                                Bugs
-                            </a>
-                            {{-- Sprints tab hidden --}}
-                            {{-- <a href="{{ route('sprints.index', ['workspace' => session('current_workspace_id')]) }}" 
-                               class="{{ request()->routeIs('sprints.*') ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                                Sprints
-                            </a> --}}
-                            @if(auth()->user()->isMemberInWorkspace(session('current_workspace_id')))
-                            <a href="{{ route('workspaces.members', session('current_workspace_id')) }}" 
-                               class="{{ request()->routeIs('workspaces.members*') ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                                Team
-                            </a>
+                            @php
+                                $wsId = session('current_workspace_id');
+                                $isMember = auth()->user()->isMemberInWorkspace($wsId);
+                                $isAdminOrOwner = auth()->user()->isAdminInWorkspace($wsId) || auth()->user()->isOwnerInWorkspace($wsId);
+                                $isGuest = auth()->user()->isGuestInWorkspace($wsId);
+                                $canAccessPullRequests = !$isGuest || auth()->user()->hasPullRequestTrackInWorkspace($wsId);
+                            @endphp
+                            <a href="{{ route('dashboard') }}" class="{{ request()->routeIs('dashboard') ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }} inline-flex items-center px-3 pt-1 border-b-2 text-sm font-medium">Dashboard</a>
+                            <a href="{{ route('projects.index') }}" class="{{ request()->routeIs('projects.*') ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }} inline-flex items-center px-3 pt-1 border-b-2 text-sm font-medium">Projects</a>
+
+                            {{-- Management --}}
+                            <div class="relative" x-data="{ open: false }">
+                                <button @click="open = !open" @click.away="open = false" type="button" class="{{ request()->routeIs('workspaces.members*', 'workspaces.tracks*', 'groups.*') ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }} inline-flex items-center px-3 pt-1 border-b-2 text-sm font-medium">
+                                    Management
+                                    <svg class="ml-1 h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+                                </button>
+                                <div x-show="open" x-transition class="absolute left-0 mt-1 w-48 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 z-50" style="display: none;">
+                                    @if($isMember)
+                                    <a href="{{ route('workspaces.members', $wsId) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Team</a>
+                                    @endif
+                                    @if($isAdminOrOwner)
+                                    <a href="{{ route('workspaces.tracks.index', $wsId) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Tracks</a>
+                                    @endif
+                                    <a href="{{ route('groups.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Groups</a>
+                                </div>
+                            </div>
+
+                            {{-- Tracking --}}
+                            <div class="relative" x-data="{ open: false }">
+                                <button @click="open = !open" @click.away="open = false" type="button" class="{{ request()->routeIs('daily-statuses.*', 'pull-requests.*', 'attendance.*') ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }} inline-flex items-center px-3 pt-1 border-b-2 text-sm font-medium">
+                                    Tracking
+                                    <svg class="ml-1 h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+                                </button>
+                                <div x-show="open" x-transition class="absolute left-0 mt-1 w-48 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 z-50" style="display: none;">
+                                    <a href="{{ route('daily-statuses.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Status</a>
+                                    @if($canAccessPullRequests)
+                                    <a href="{{ route('pull-requests.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Pull Requests</a>
+                                    @endif
+                                    <a href="{{ route('attendance.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Attendance</a>
+                                </div>
+                            </div>
+
+                            {{-- Performance --}}
+                            <div class="relative" x-data="{ open: false }">
+                                <button @click="open = !open" @click.away="open = false" type="button" class="{{ request()->routeIs('reports.*', 'topics.*', 'kpi.*', 'guest-feedback.*', 'feedback-questions.*') ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }} inline-flex items-center px-3 pt-1 border-b-2 text-sm font-medium">
+                                    Performance
+                                    <svg class="ml-1 h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+                                </button>
+                                <div x-show="open" x-transition class="absolute left-0 mt-1 w-52 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 z-50" style="display: none;">
+                                    <a href="{{ route('reports.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Reports</a>
+                                    <a href="{{ route('topics.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Topics</a>
+                                    @if($isGuest)
+                                    <a href="{{ route('guest-feedback.create') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Feedback</a>
+                                    @endif
+                                    @if($isMember || $isAdminOrOwner)
+                                    <a href="{{ route('kpi.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">KPI</a>
+                                    @endif
+                                    @if($isAdminOrOwner)
+                                    <a href="{{ route('feedback-questions.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Feedback Questions</a>
+                                    @endif
+                                </div>
+                            </div>
+
+                            {{-- Settings --}}
+                            @if($isAdminOrOwner)
+                            <div class="relative" x-data="{ open: false }">
+                                <button @click="open = !open" @click.away="open = false" type="button" class="{{ request()->routeIs('settings.*') ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }} inline-flex items-center px-3 pt-1 border-b-2 text-sm font-medium">
+                                    Settings
+                                    <svg class="ml-1 h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+                                </button>
+                                <div x-show="open" x-transition class="absolute left-0 mt-1 w-48 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 z-50" style="display: none;">
+                                    <a href="{{ route('settings.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Global Settings</a>
+                                </div>
+                            </div>
                             @endif
-                            @if(auth()->user()->isAdminInWorkspace(session('current_workspace_id')) || auth()->user()->isOwnerInWorkspace(session('current_workspace_id')))
-                            <a href="{{ route('workspaces.tracks.index', session('current_workspace_id')) }}" 
-                               class="{{ request()->routeIs('workspaces.tracks*') ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                                Tracks
-                            </a>
-                            @endif
-                            {{-- Time Tracking tab hidden --}}
-                            {{-- <a href="{{ route('time-tracking.index') }}" 
-                               class="{{ request()->routeIs('time-tracking.*') ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                                Time Tracking
-                            </a> --}}
-                            <a href="{{ route('groups.index') }}" 
-                               class="{{ request()->routeIs('groups.*') ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                                Groups
-                            </a>
-                            <a href="{{ route('reports.index') }}" 
-                               class="{{ request()->routeIs('reports.*') ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                                Reports
-                            </a>
-                            <a href="{{ route('topics.index') }}" 
-                               class="{{ request()->routeIs('topics.*') ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                                Topics
-                            </a>
-                            <a href="{{ route('daily-statuses.index') }}" 
-                               class="{{ request()->routeIs('daily-statuses.*') ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                                Status
-                            </a>
-                            {{-- Attendance link hidden --}}
-                            {{-- <a href="{{ route('attendance.index') }}" 
-                               class="{{ request()->routeIs('attendance.*') ? 'border-indigo-500 text-gray-900' : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700' }} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                                Attendance
-                            </a> --}}
                         @endif
                     @endauth
                 </div>
@@ -124,7 +139,7 @@
                              x-transition:leave="transition ease-in duration-150"
                              x-transition:leave-start="opacity-100 transform scale-100"
                              x-transition:leave-end="opacity-0 transform scale-95"
-                             class="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-[500px] overflow-hidden flex flex-col"
+                             class="absolute right-0 mt-2 w-[28rem] bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-[500px] overflow-hidden flex flex-col"
                              style="display: none;">
                             <!-- Header -->
                             <div class="px-4 py-3 border-b border-gray-200 flex items-center justify-between bg-gray-50">

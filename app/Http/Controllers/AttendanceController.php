@@ -4,37 +4,78 @@ namespace App\Http\Controllers;
 
 use App\Models\Attendance;
 use App\Models\Project;
+use App\Models\Task;
 use App\Models\User;
 use App\Services\AttendanceService;
+use App\Services\AbsenceTrackingService;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class AttendanceController extends Controller
 {
     protected AttendanceService $attendanceService;
+    protected AbsenceTrackingService $absenceTrackingService;
 
-    public function __construct(AttendanceService $attendanceService)
+    public function __construct(AttendanceService $attendanceService, AbsenceTrackingService $absenceTrackingService)
     {
         $this->attendanceService = $attendanceService;
+        $this->absenceTrackingService = $absenceTrackingService;
     }
 
     /**
-     * Display attendance for a project.
+     * Display attendance (absence tracking) dashboard for the workspace.
+     * Absence is calculated from overdue tasks: incomplete past start_date = absence days.
      */
-    public function index(Project $project, Request $request)
+    public function index(Request $request)
     {
-        $this->authorize('view', $project);
+        $workspaceId = session('current_workspace_id');
+        if (!$workspaceId) {
+            return redirect()->route('workspaces.index');
+        }
+
+
+        $asOfDate = $request->input('as_of', Carbon::today());
         
-        $startDate = $request->date('start_date', now()->startOfMonth());
-        $endDate = $request->date('end_date', now()->endOfMonth());
+        $asOfDate = Carbon::parse($asOfDate instanceof \DateTimeInterface ? $asOfDate->format('Y-m-d') : $asOfDate)->startOfDay();
         
-        $report = $this->attendanceService->getProjectAttendanceReport(
-            $project,
-            $startDate,
-            $endDate
-        );
+        if ($asOfDate->isFuture()) {
+            $asOfDate = Carbon::today()->startOfDay();
+        }
+
+        $user = auth()->user();
+        $guestIdsFilter = null;
+        if ($user->isMemberOnlyInWorkspace($workspaceId)) {
+            $myGuests = $user->getCreatedGuestsInWorkspace($workspaceId);
+            $guestIdsFilter = $myGuests->pluck('id')->toArray();
+            // Also include guests assigned to tasks in projects created by this member
+            $myProjectIds = Project::where('workspace_id', $workspaceId)
+                ->where('created_by_user_id', $user->id)
+                ->pluck('id');
+            if ($myProjectIds->isNotEmpty()) {
+                $taskIds = Task::withoutGlobalScopes()
+                    ->whereIn('project_id', $myProjectIds)
+                    ->pluck('id');
+                if ($taskIds->isNotEmpty()) {
+                    $assigneeIds = DB::table('task_assignees')
+                        ->whereIn('task_id', $taskIds)
+                        ->pluck('user_id')
+                        ->unique()
+                        ->values();
+                    $guestIdsFromTasks = User::whereIn('id', $assigneeIds)
+                        ->whereHas('workspaces', fn ($q) => $q->where('workspace_id', $workspaceId)->where('role', 'guest'))
+                        ->pluck('id')
+                        ->toArray();
+                    $guestIdsFilter = array_values(array_unique(array_merge($guestIdsFilter, $guestIdsFromTasks)));
+                }
+            }
+        }
+
         
-        return view('attendance.index', compact('project', 'report', 'startDate', 'endDate'));
+        $summary = $this->absenceTrackingService->getAbsenceSummaryForWorkspace($workspaceId, $asOfDate, $guestIdsFilter);
+        
+
+        return view('attendance.index', compact('summary', 'asOfDate'));
     }
 
     /**

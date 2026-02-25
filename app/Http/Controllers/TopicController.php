@@ -13,8 +13,12 @@ class TopicController extends Controller
      */
     public function index(Request $request)
     {
+        
         $workspaceId = session('current_workspace_id');
         $user = auth()->user();
+        
+
+        $member = $user->isMemberOnlyInWorkspace($workspaceId);
         
         if (!$workspaceId) {
             return redirect()->route('workspaces.index');
@@ -46,6 +50,10 @@ class TopicController extends Controller
             $query->where('track_id', $request->track_id);
         }
 
+        if($member){
+            $query->whereIn('user_id', $user->getCreatedGuestsInWorkspace($workspaceId)->pluck('id')->toArray());
+        }
+
         // Filter by completion status
         if ($request->filled('is_complete')) {
             $query->where('is_complete', $request->is_complete === '1');
@@ -60,6 +68,9 @@ class TopicController extends Controller
         $trackStats = collect();
         $userStats = collect();
         
+        if($isGuest){
+            $topics = $topics->where('user_id', $user->id);
+        }
         if ($isAdmin) {
             // Count topics by track
             $trackStats = Topic::where('workspace_id', $workspaceId)

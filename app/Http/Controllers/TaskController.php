@@ -97,6 +97,7 @@ class TaskController extends Controller
         }
 
         $tasks = $query->with(['assignees', 'status', 'tags', 'project', 'relatedTask', 'creator'])
+            ->withCount(['comments', 'attachments', 'subtasks', 'bugs'])
             ->orderBy('position')
             ->get();
 
@@ -226,7 +227,7 @@ class TaskController extends Controller
             
             $status->tasks = $taskQuery
                 ->with(['assignees', 'tags', 'relatedTask', 'creator'])
-                ->withCount(['comments', 'attachments', 'subtasks'])
+                ->withCount(['comments', 'attachments', 'subtasks', 'bugs'])
                 ->orderBy('position')
                 ->get();
         }
@@ -481,12 +482,23 @@ class TaskController extends Controller
         
         // $this->authorize('view', $task);
 
-        $task->load(['assignees', 'watchers', 'status', 'tags', 'comments.user', 'attachments', 'subtasks.status', 'project', 'creator']);
+        $task->load([
+            'assignees', 'watchers', 'status', 'tags', 'comments.user',
+            'attachments', 'subtasks.status', 'subtasks.assignees', 'subtasks.comments.user',
+            'project', 'creator',
+            'bugs.status', 'bugs.assignees', 'bugs.creator', 'bugs.comments.user',
+        ]);
 
         $statuses = $task->project->customStatuses;
         $users = $this->getAssignableUsersForCreation($workspaceId);
 
-        return view('tasks.show', compact('task', 'statuses', 'users'));
+        // Check if current user is a tester for this project
+        $user = auth()->user();
+        $isTester = $task->project->testers()->where('tester_id', $user->id)->where('status', 'active')->exists();
+        $isGuestTester = $user->hasTestingTrackInWorkspace($workspaceId);
+        $canReportBugs = $isTester || $isGuestTester || $user->isAdminInWorkspace($workspaceId) || $user->isOwnerInWorkspace($workspaceId);
+
+        return view('tasks.show', compact('task', 'statuses', 'users', 'canReportBugs'));
     }
 
     public function edit(Request $request, Task $task, ?Project $project = null)
@@ -785,5 +797,95 @@ class TaskController extends Controller
         }
 
         return view('bugs.index', compact('bugs', 'project', 'projects', 'statuses', 'assignees', 'tags', 'tasks', 'isGuest'));
+    }
+
+    /**
+     * Store a bug report on a main task.
+     * Auto-calculates estimation: all bugs share 20% of main task time equally.
+     */
+    public function storeBug(Request $request, Task $task)
+    {
+        $workspaceId = session('current_workspace_id');
+        $user = auth()->user();
+
+        // Verify user can report bugs (tester or admin/owner)
+        $isTester = $task->project->testers()->where('tester_id', $user->id)->where('status', 'active')->exists();
+        $isGuestTester = $user->hasTestingTrackInWorkspace($workspaceId);
+        $canReportBugs = $isTester || $isGuestTester || $user->isAdminInWorkspace($workspaceId) || $user->isOwnerInWorkspace($workspaceId);
+
+        if (!$canReportBugs) {
+            return back()->with('error', 'You do not have permission to report bugs.');
+        }
+
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'priority' => 'nullable|in:urgent,high,normal,low',
+        ]);
+
+        $todoStatus = $task->project->customStatuses()->where('type', 'todo')->first();
+
+        // Create the bug task
+        $bug = Task::create([
+            'workspace_id' => $workspaceId,
+            'project_id' => $task->project_id,
+            'creator_id' => $user->id,
+            'related_task_id' => $task->id,
+            'title' => $validated['title'],
+            'description' => $validated['description'] ?? null,
+            'type' => 'bug',
+            'priority' => $validated['priority'] ?? 'normal',
+            'status_id' => $todoStatus?->id,
+            'is_main_task' => 'no',
+            'assigned_date' => now(),
+        ]);
+
+        // Assign the bug to the same assignee as the main task
+        $mainAssignee = $task->assignees()->first();
+        if ($mainAssignee) {
+            $bug->assignees()->attach($mainAssignee->id);
+        }
+
+        // Recalculate estimation for ALL bugs on this main task
+        $this->recalculateBugEstimations($task);
+
+        return back()->with('success', 'Bug reported successfully.');
+    }
+
+    /**
+     * Recalculate bug estimations so all bugs share 20% of main task time equally.
+     */
+    private function recalculateBugEstimations(Task $mainTask): void
+    {
+        $bugs = $mainTask->bugs()->get();
+        $bugsCount = $bugs->count();
+
+        if ($bugsCount === 0) {
+            $mainTask->update([
+                'bugs_count' => 0,
+                'bug_time_used' => 0,
+            ]);
+            return;
+        }
+
+        // 20% of main task estimated time
+        $percentage = $mainTask->project->bug_time_allocation_percentage ?? 20;
+        $totalBugTime = (($mainTask->estimated_time ?? 0) * $percentage) / 100;
+
+        // Divide equally among all bugs
+        $perBugTime = $totalBugTime / $bugsCount;
+
+        foreach ($bugs as $bug) {
+            $bug->update([
+                'estimated_time' => round($perBugTime, 2),
+            ]);
+        }
+
+        // Update main task bug tracking
+        $mainTask->update([
+            'bugs_count' => $bugsCount,
+            'bug_time_used' => $totalBugTime,
+            'bug_time_limit' => $totalBugTime,
+        ]);
     }
 }

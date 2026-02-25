@@ -28,7 +28,7 @@
         <div class="bg-white rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.08),0_8px_24px_rgba(0,0,0,0.04)] hover:shadow-[0_1px_3px_rgba(0,0,0,0.08),0_12px_32px_rgba(0,0,0,0.1)] transition-shadow duration-300">
             <a href="{{ route('projects.show', $project) }}" class="block p-6">
 
-                {{-- Top row: icon + name --}}
+                {{-- Top row: icon + name + delete (owner/admin) --}}
                 <div class="flex items-center gap-4 mb-5">
                     <div class="w-12 h-12 rounded-xl flex items-center justify-center text-2xl" style="background: {{ $color }}1A;">
                         {{ $project->icon ?? '📁' }}
@@ -39,6 +39,15 @@
                             <p class="text-sm text-gray-500 truncate">{{ Str::limit($project->description, 60) }}</p>
                         @endif
                     </div>
+                    @can('delete', $project)
+                    <form action="{{ route('projects.destroy', $project) }}" method="POST" class="inline" onsubmit="return confirm('Delete this project? All tasks and data will be removed. This cannot be undone.');">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" onclick="event.stopPropagation();" class="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition" title="Delete project">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        </button>
+                    </form>
+                    @endcan
                 </div>
 
                 {{-- Progress --}}
@@ -53,30 +62,71 @@
                 </div>
 
                 {{-- Info pills --}}
-                <div class="flex flex-wrap items-center gap-2 mb-4">
+                <div class="flex flex-wrap items-center gap-2 mb-3 mt-3">
                     <span class="inline-flex items-center gap-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-full px-2.5 py-1">
                         <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                         {{ $tasksCount }} tasks
                     </span>
-                    @if($project->due_date)
-                        @if($project->isOverdue())
-                            <span class="inline-flex items-center gap-1 text-xs font-semibold text-red-700 bg-red-50 rounded-full px-2.5 py-1">
+                    @if(($project->bugs_count ?? 0) > 0)
+                        <span class="inline-flex items-center gap-1 text-xs font-medium text-red-700 bg-red-50 rounded-full px-2.5 py-1">
+                            <svg class="w-3.5 h-3.5 text-red-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/></svg>
+                            {{ $project->bugs_count }} bugs
+                        </span>
+                    @endif
+                    <span class="inline-flex items-center gap-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-full px-2.5 py-1">
+                        <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                        {{ $project->comments_count ?? 0 }}
+                    </span>
+                    @if($project->total_days)
+                        <span class="inline-flex items-center gap-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-full px-2.5 py-1">
+                            <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            {{ $project->total_days }} days
+                        </span>
+                    @endif
+                </div>
+
+                {{-- Dates row --}}
+                <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500 mb-3">
+                    @if($project->start_date)
+                        <span class="inline-flex items-center gap-1 mx-2">
+                            <svg class="w-3.5 h-3.5 text-green-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                            Start: {{ $project->start_date->format('M j') }}
+                        </span>
+                    @endif
+                    @if($project->end_date)
+                        @if($project->end_date->isPast())
+                            <span class="inline-flex items-center gap-1 font-semibold text-red-600 mx-2">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                Overdue · {{ $project->due_date->format('M j') }}
+                                End: {{ $project->end_date->format('M j') }}
+                                <span class="px-1.5 py-0.5 bg-red-100 text-red-700 rounded text-[10px] font-bold uppercase">Ended</span>
                             </span>
                         @else
-                            <span class="inline-flex items-center gap-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-full px-2.5 py-1">
-                                <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                                Due {{ $project->due_date->format('M j') }}
+                            <span class="inline-flex items-center gap-1 mx-2">
+                                <svg class="w-3.5 h-3.5 text-blue-400 mx-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                End: {{ $project->end_date->format('M j') }}
                             </span>
                         @endif
                     @endif
-                    <span class="text-xs text-gray-400 ml-auto">{{ $project->updated_at->diffForHumans() }}</span>
+                    @if($project->due_date)
+                        @if($project->isOverdue())
+                            <span class="inline-flex items-center gap-1 font-semibold text-red-600 mx-2">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                Due: {{ $project->due_date->format('M j') }}
+                                <span class="px-1.5 py-0.5 bg-red-100 text-red-700 rounded text-[10px] font-bold uppercase">Overdue</span>
+                            </span>
+                        @else
+                            <span class="inline-flex items-center gap-1 ml-4">
+                                <svg class="w-3.5 h-3.5 text-orange-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                Due: {{ $project->due_date->format('M j') }}
+                            </span>
+                        @endif
+                    @endif
+                    <span class="text-gray-400 ml-auto">{{ $project->updated_at->diffForHumans() }}</span>
                 </div>
 
                 {{-- Creator --}}
                 @if(!$isGuest && $project->createdBy)
-                <div class="flex items-center gap-2 pt-4 border-t border-gray-100">
+                <div class="flex items-center gap-2 pt-3 border-t border-gray-100">
                     <div class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white" style="background:{{ $color }}">
                         {{ strtoupper(substr($project->createdBy->name, 0, 1)) }}
                     </div>

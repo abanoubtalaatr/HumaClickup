@@ -53,6 +53,10 @@ class Workspace extends Model
         return $this->hasMany(Space::class);
     }
 
+    public function track(): BelongsTo
+    {
+        return $this->belongsTo(Track::class,'pivot_track_id');
+    }
     public function projects(): HasMany
     {
         return $this->hasMany(Project::class);
