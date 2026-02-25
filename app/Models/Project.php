@@ -14,6 +14,7 @@ class Project extends Model
 
     protected $fillable = [
         'workspace_id',
+        'group_id',
         'created_by_user_id',
         'space_id',
         'name',
@@ -27,8 +28,18 @@ class Project extends Model
         'progress',
         'is_archived',
         'order',
+        'total_days',
+        'working_days',
+        'exclude_weekends',
+        'required_main_tasks_count',
+        'current_main_tasks_count',
+        'min_task_hours',
+        'bug_time_allocation_percentage',
+        'weekly_hours_target',
+        'tasks_requirement_met',
         'start_date',
         'due_date',
+        'end_date',
     ];
 
     protected function casts(): array
@@ -37,7 +48,17 @@ class Project extends Model
             'automation_rules' => 'array',
             'progress' => 'decimal:2',
             'is_archived' => 'boolean',
-            'start_date' => 'datetime',
+            'exclude_weekends' => 'boolean',
+            'tasks_requirement_met' => 'boolean',
+            'total_days' => 'integer',
+            'working_days' => 'integer',
+            'required_main_tasks_count' => 'integer',
+            'current_main_tasks_count' => 'integer',
+            'min_task_hours' => 'decimal:2',
+            'bug_time_allocation_percentage' => 'decimal:2',
+            'weekly_hours_target' => 'decimal:2',
+            'start_date' => 'date',
+            'end_date' => 'date',
             'due_date' => 'datetime',
         ];
     }
@@ -61,6 +82,11 @@ class Project extends Model
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by_user_id');
+    }
+
+    public function group(): BelongsTo
+    {
+        return $this->belongsTo(Group::class);
     }
 
     public function template(): BelongsTo
@@ -96,6 +122,46 @@ class Project extends Model
     public function attachments(): MorphMany
     {
         return $this->morphMany(Attachment::class, 'attachable');
+    }
+
+    public function testers(): HasMany
+    {
+        return $this->hasMany(ProjectTester::class);
+    }
+
+    public function activeTesters(): HasMany
+    {
+        return $this->testers()->where('status', 'active');
+    }
+
+    public function dailyProgress(): HasMany
+    {
+        return $this->hasMany(DailyProgress::class);
+    }
+
+    public function attendances(): HasMany
+    {
+        return $this->hasMany(Attendance::class);
+    }
+
+    public function projectMembers(): HasMany
+    {
+        return $this->hasMany(ProjectMember::class);
+    }
+
+    public function guests()
+    {
+        return $this->projectMembers()->guests()->with('user', 'track');
+    }
+
+    public function projectTesters()
+    {
+        return $this->projectMembers()->testers()->with('user');
+    }
+
+    public function projectMentors()
+    {
+        return $this->projectMembers()->mentors()->with('user');
     }
 
     // Helper Methods
@@ -209,5 +275,161 @@ class Project extends Model
         return $query->whereNotNull('due_date')
             ->whereBetween('due_date', [now(), now()->addDays($days)])
             ->where('is_archived', false);
+    }
+
+    /**
+     * Check if project meets task requirements.
+     */
+    public function meetsTaskRequirements(): bool
+    {
+        return $this->current_main_tasks_count >= $this->required_main_tasks_count;
+    }
+
+    /**
+     * Update main tasks count.
+     */
+    public function updateMainTasksCount(): void
+    {
+        $count = $this->tasks()->where('is_main_task', 'yes')->count();
+        $this->update([
+            'current_main_tasks_count' => $count,
+            'tasks_requirement_met' => $count >= $this->required_main_tasks_count
+        ]);
+    }
+
+    /**
+     * Calculate required main tasks based on group size and working days.
+     */
+    public function calculateRequiredMainTasks(): int
+    {
+        if (!$this->group) {
+            return 0;
+        }
+        
+        $groupMembersCount = $this->group->guests()->count();
+        return $groupMembersCount * $this->working_days;
+    }
+
+    /**
+     * Calculate working days excluding weekends (Friday & Saturday).
+     */
+    public static function calculateWorkingDays(\Carbon\Carbon $startDate, \Carbon\Carbon $endDate, bool $excludeWeekends = true): int
+    {
+        if (!$excludeWeekends) {
+            return $startDate->diffInDays($endDate) + 1;
+        }
+
+        $workingDays = 0;
+        $currentDate = $startDate->copy();
+
+        while ($currentDate->lte($endDate)) {
+            // Skip Friday (5) and Saturday (6)
+            if (!in_array($currentDate->dayOfWeek, [5, 6])) {
+                $workingDays++;
+            }
+            $currentDate->addDay();
+        }
+
+        return $workingDays;
+    }
+
+    /**
+     * Get team members from the assigned group (legacy).
+     * 
+     * @deprecated Use getGuestMembers() instead
+     */
+    public function getTeamMembers()
+    {
+        return $this->group ? $this->group->guests : collect();
+    }
+
+    /**
+     * Get guest members from project_members table (NEW).
+     */
+    public function getGuestMembers()
+    {
+        return $this->guests()->get()->pluck('user');
+    }
+
+    /**
+     * Get number of guest members in this project.
+     */
+    public function getGuestsCount(): int
+    {
+        return $this->guests()->count();
+    }
+
+    /**
+     * Check if user is a guest member of this project.
+     */
+    public function hasGuestMember(User $user): bool
+    {
+        return $this->guests()->where('user_id', $user->id)->exists();
+    }
+
+    /**
+     * Add a guest member to the project.
+     */
+    public function addGuestMember(User $user, ?Track $track = null): ProjectMember
+    {
+        return $this->projectMembers()->create([
+            'user_id' => $user->id,
+            'role' => 'guest',
+            'track_id' => $track?->id,
+            'joined_at' => now(),
+        ]);
+    }
+
+    /**
+     * Add a tester to the project.
+     */
+    public function addTester(User $user): ProjectMember
+    {
+        return $this->projectMembers()->create([
+            'user_id' => $user->id,
+            'role' => 'tester',
+            'joined_at' => now(),
+        ]);
+    }
+
+    /**
+     * Get members without tasks.
+     */
+    public function getMembersWithoutTasks()
+    {
+        $teamMembers = $this->getTeamMembers();
+        return $teamMembers->filter(function ($member) {
+            return $this->tasks()->whereHas('assignees', function ($q) use ($member) {
+                $q->where('users.id', $member->id);
+            })->count() === 0;
+        });
+    }
+
+    /**
+     * Get members with overdue tasks.
+     */
+    public function getMembersWithOverdueTasks()
+    {
+        $teamMembers = $this->getTeamMembers();
+        return $teamMembers->filter(function ($member) {
+            return $this->tasks()
+                ->whereHas('assignees', function ($q) use ($member) {
+                    $q->where('users.id', $member->id);
+                })
+                ->whereNotNull('due_date')
+                ->where('due_date', '<', now())
+                ->whereHas('status', fn($q) => $q->where('type', '!=', 'done'))
+                ->count() > 0;
+        });
+    }
+
+    /**
+     * Get members not meeting weekly hours target.
+     */
+    public function getMembersNotMeetingWeeklyTarget()
+    {
+        return $this->getTeamMembers()->filter(function ($member) {
+            return !$member->meets_weekly_target;
+        });
     }
 }

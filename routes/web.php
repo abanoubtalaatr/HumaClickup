@@ -9,12 +9,17 @@ use App\Http\Controllers\SprintController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\WorkspaceController;
 use App\Http\Controllers\TimeTrackingController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\TrackController;
 use App\Http\Controllers\TaskEstimationController;
 use App\Http\Controllers\TopicController;
 use App\Http\Controllers\DailyStatusController;
 use App\Http\Controllers\TagController;
 use App\Http\Controllers\CommentController;
+use App\Http\Controllers\MentorDashboardController;
+use App\Http\Controllers\GuestProgressController;
+use App\Http\Controllers\OwnerDashboardController;
+use App\Http\Controllers\TesterAssignmentController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes
@@ -100,6 +105,12 @@ Route::post('/logout', function (\Illuminate\Http\Request $request) {
 Route::middleware(['auth'])->group(function () {
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    
+    // Notification Routes (outside workspace middleware - user-specific)
+    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.api');
+    Route::get('/notifications/all', [NotificationController::class, 'all'])->name('notifications.index');
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead'])->name('notifications.read');
+    Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
     
     // Workspace routes
     Route::prefix('workspaces')->name('workspaces.')->group(function () {
@@ -252,10 +263,13 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/projects', [ProjectController::class, 'index'])->name('projects.index');
         Route::get('/projects/create', [ProjectController::class, 'create'])->name('projects.create');
         Route::post('/projects', [ProjectController::class, 'store'])->name('projects.store');
+        Route::post('/projects/with-tasks', [ProjectController::class, 'storeWithTasks'])->name('projects.store-with-tasks');
         Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
         Route::get('/projects/{project}/edit', [ProjectController::class, 'edit'])->name('projects.edit');
         Route::put('/projects/{project}', [ProjectController::class, 'update'])->name('projects.update');
         Route::delete('/projects/{project}', [ProjectController::class, 'destroy'])->name('projects.destroy');
+        Route::get('/projects/{project}/assign-testers', [TesterAssignmentController::class, 'create'])->name('projects.assign-testers');
+        Route::post('/projects/{project}/assign-testers', [TesterAssignmentController::class, 'store'])->name('projects.store-testers');
         
         Route::get('/tasks', [TaskController::class, 'kanban'])->name('tasks.index');
         Route::get('/tasks/kanban', [TaskController::class, 'kanban'])->name('tasks.kanban');
@@ -288,7 +302,8 @@ Route::middleware(['auth'])->group(function () {
         // Standalone project-scoped task routes (uses session workspace)
         Route::prefix('projects/{project}')->group(function () {
             Route::get('/tasks/kanban', [TaskController::class, 'kanban'])->name('projects.tasks.kanban');
-            Route::get('/tasks/list', [TaskController::class, 'index'])->name('projects.tasks.index');
+            Route::get('/tasks/list', [TaskController::class, 'list'])->name('projects.tasks.list');
+            Route::get('/tasks', [TaskController::class, 'kanban'])->name('projects.tasks.index');
             Route::get('/tasks/create', [TaskController::class, 'create'])->name('projects.tasks.create');
             Route::post('/tasks', [TaskController::class, 'store'])->name('projects.tasks.store');
             // Use explicit task resolution to avoid binding conflicts
@@ -404,5 +419,33 @@ Route::middleware(['auth'])->group(function () {
         // Dashboard as user route (Admin feature to view member dashboards)
         Route::get('/dashboard/as/{targetUser}', [DashboardController::class, 'viewAsUser'])->name('dashboard.as-user');
         Route::post('/dashboard/stop-impersonating', [DashboardController::class, 'stopImpersonating'])->name('dashboard.stop-impersonating');
+        
+        // ============================================
+        // STUDENT TRAINING SYSTEM ROUTES
+        // ============================================
+        
+        // Mentor Dashboard Routes
+        Route::prefix('mentor')->name('mentor.')->group(function () {
+            Route::get('/dashboard', [MentorDashboardController::class, 'index'])->name('dashboard');
+            Route::post('/approve-progress/{progress}', [MentorDashboardController::class, 'approveProgress'])->name('approve-progress');
+            Route::post('/approve-attendance/{attendance}', [MentorDashboardController::class, 'approveAttendance'])->name('approve-attendance');
+            Route::post('/bulk-approve-progress', [MentorDashboardController::class, 'bulkApproveProgress'])->name('bulk-approve-progress');
+            Route::post('/bulk-approve-attendance', [MentorDashboardController::class, 'bulkApproveAttendance'])->name('bulk-approve-attendance');
+            Route::get('/projects/{project}/guests/{userId}/progress', [MentorDashboardController::class, 'showGuestProgress'])->name('guest-progress');
+        });
+        
+        // Guest Progress Routes
+        Route::prefix('guests')->name('guests.')->group(function () {
+            Route::get('/progress', [GuestProgressController::class, 'index'])->name('progress');
+            Route::get('/projects/{project}/progress', [GuestProgressController::class, 'show'])->name('project-progress');
+            Route::get('/projects/{project}/calendar', [GuestProgressController::class, 'calendar'])->name('calendar');
+        });
+        
+        // Owner Dashboard Routes
+        Route::prefix('owner')->name('owner.')->group(function () {
+            Route::get('/overview', [OwnerDashboardController::class, 'index'])->name('overview');
+            Route::get('/projects/{project}/details', [OwnerDashboardController::class, 'showProject'])->name('project-details');
+            Route::get('/guests-without-tasks', [OwnerDashboardController::class, 'guestsWithoutTasks'])->name('guests-without-tasks');
+        });
     });
 });

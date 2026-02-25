@@ -4,132 +4,124 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Carbon\Carbon;
 
 class Attendance extends Model
 {
     protected $fillable = [
         'workspace_id',
-        'guest_id',
+        'project_id',
+        'user_id',
         'date',
-        'checked_in_at',
-        'checked_out_at',
+        'daily_progress_id',
         'status',
+        'approved',
+        'approved_by_user_id',
+        'approved_at',
         'notes',
     ];
 
-    protected $casts = [
-        'date' => 'date',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'date' => 'date',
+            'approved' => 'boolean',
+            'approved_at' => 'datetime',
+        ];
+    }
 
+    // Relationships
     public function workspace(): BelongsTo
     {
         return $this->belongsTo(Workspace::class);
     }
 
-    public function guest(): BelongsTo
+    public function project(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'guest_id');
+        return $this->belongsTo(Project::class);
     }
 
-    // Check if guest checked in
-    public function hasCheckedIn(): bool
+    public function user(): BelongsTo
     {
-        return !is_null($this->checked_in_at);
+        return $this->belongsTo(User::class);
     }
 
-    // Check if guest checked out
-    public function hasCheckedOut(): bool
+    public function dailyProgress(): BelongsTo
     {
-        return !is_null($this->checked_out_at);
+        return $this->belongsTo(DailyProgress::class, 'daily_progress_id');
     }
 
-    // Get total hours attended
-    public function getTotalHoursAttribute(): ?float
+    public function approvedBy(): BelongsTo
     {
-        if ($this->checked_in_at && $this->checked_out_at) {
-            $checkIn = Carbon::parse($this->checked_in_at);
-            $checkOut = Carbon::parse($this->checked_out_at);
-            return $checkOut->diffInHours($checkIn, true);
-        }
-        return null;
+        return $this->belongsTo(User::class, 'approved_by_user_id');
     }
 
-    // Check if attended early (before 9:00 AM)
-    public function getAttendedEarlyAttribute(): bool
+    // Helper Methods
+    
+    /**
+     * Check if student was present.
+     */
+    public function isPresent(): bool
     {
-        if (!$this->checked_in_at) {
-            return false;
-        }
-        $checkInTime = Carbon::parse($this->checked_in_at);
-        $earlyThreshold = Carbon::parse('09:00:00');
-        return $checkInTime->lessThanOrEqualTo($earlyThreshold);
+        return $this->status === 'present';
     }
 
-    // Check if attended full time (at least 6 hours)
-    public function getAttendedFullTimeAttribute(): bool
+    /**
+     * Check if attendance is approved and locked.
+     */
+    public function isApproved(): bool
     {
-        if (!$this->total_hours) {
-            return false;
-        }
-        return $this->total_hours >= 6;
+        return $this->approved;
     }
 
-    // Get attendance quality indicator
-    public function getQualityIndicatorAttribute(): string
+    /**
+     * Check if attendance can still be modified.
+     */
+    public function isLocked(): bool
     {
-        if ($this->status === 'absent') {
-            return 'absent';
-        }
-        
-        if (!$this->hasCheckedOut()) {
-            return 'in_progress';
+        return $this->approved;
+    }
+
+    /**
+     * Derive attendance status from daily progress.
+     * 
+     * Rule: progress >= 100% → present, else absent
+     */
+    public static function deriveStatus(?DailyProgress $progress): string
+    {
+        if (!$progress) {
+            return 'absent'; // No progress record = absent
         }
 
-        if ($this->attended_full_time && $this->attended_early) {
-            return 'excellent';
+        return $progress->meetsTarget() ? 'present' : 'absent';
+    }
+
+    /**
+     * Mark as approved by mentor.
+     */
+    public function approve(User $mentor, ?string $notes = null): void
+    {
+        if ($this->approved) {
+            throw new \Exception('Attendance is already approved and cannot be modified.');
         }
-        
-        if ($this->attended_full_time) {
-            return 'good';
+
+        $this->update([
+            'approved' => true,
+            'approved_by_user_id' => $mentor->id,
+            'approved_at' => now(),
+            'notes' => $notes ?? $this->notes,
+        ]);
+    }
+
+    /**
+     * Update status based on current progress (only if not locked).
+     */
+    public function updateFromProgress(): void
+    {
+        if ($this->isLocked()) {
+            throw new \Exception('Cannot update approved attendance.');
         }
-        
-        if ($this->total_hours >= 4) {
-            return 'fair';
-        }
-        
-        return 'poor';
-    }
 
-    // Scopes
-    public function scopeForWorkspace($query, int $workspaceId)
-    {
-        return $query->where('workspace_id', $workspaceId);
-    }
-
-    public function scopeForGuest($query, int $guestId)
-    {
-        return $query->where('guest_id', $guestId);
-    }
-
-    public function scopeForDate($query, $date)
-    {
-        return $query->whereDate('date', $date);
-    }
-
-    public function scopeAbsent($query)
-    {
-        return $query->where('status', 'absent');
-    }
-
-    public function scopePresent($query)
-    {
-        return $query->where('status', 'present');
-    }
-
-    public function scopeThisMonth($query)
-    {
-        return $query->whereYear('date', now()->year)
-                     ->whereMonth('date', now()->month);
+        $this->status = self::deriveStatus($this->dailyProgress);
+        $this->save();
     }
 }

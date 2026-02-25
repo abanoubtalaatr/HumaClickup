@@ -141,7 +141,7 @@
                 </div>
             </a>
 
-            <a href="{{ route('projects.tasks.index', $project) }}" 
+            <a href="{{ route('projects.tasks.list', $project) }}" 
                class="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow">
                 <div class="flex items-center">
                     <div class="flex-shrink-0">

@@ -77,10 +77,11 @@ class TaskService
     {
         return DB::transaction(function () use ($task, $data, $user) {
             $oldValues = $task->toArray();
+            $oldStatus = $task->status; // Capture old status before any updates
 
             // Handle status change
             if (isset($data['status_id']) && $data['status_id'] !== $task->status_id) {
-                $this->handleStatusChange($task, $data['status_id'], $user);
+                $this->handleStatusChange($task, $data['status_id'], $oldStatus, $user);
             }
 
             // Update task
@@ -159,6 +160,7 @@ class TaskService
     {
         // return DB::transaction(function () use ($task, $statusId, $position, $user) {
             $oldStatusId = $task->status_id;
+            $oldStatus = $task->status; // Capture old status BEFORE update
             $positionValue = $position ?? ($task->project
                 ? $this->getNextPosition($task->project, $statusId)
                 : $this->getNextPositionForStatusWithoutProject($statusId));
@@ -173,8 +175,8 @@ class TaskService
 
             $task->refresh();
 
-            // Handle status change logic
-            $this->handleStatusChange($task, $statusId, $user);
+            // Handle status change logic (pass old status)
+            $this->handleStatusChange($task, $statusId, $oldStatus, $user);
 
             // Log activity (use current workspace when task has no workspace_id)
             $workspaceIdForLog = $task->workspace_id ?? session('current_workspace_id');
@@ -218,23 +220,63 @@ class TaskService
     /**
      * Handle status change logic
      */
-    protected function handleStatusChange(Task $task, int $newStatusId, User $user): void
+    protected function handleStatusChange(Task $task, int $newStatusId, $oldStatus, User $user): void
     {
         $newStatus = \App\Models\CustomStatus::find($newStatusId);
 
         // If moving to "done" type status
         if ($newStatus && $newStatus->type === 'done') {
+            // Record completion timestamp
+            $task->update(['completion_date' => now()]);
+            
             // Stop any running timers
             $task->timeEntries()
                 ->whereNull('end_time')
                 ->get()
                 ->each(fn($entry) => $entry->stop());
 
+            // Trigger daily progress recalculation if this is a main task
+            if ($task->is_main_task === 'yes' && $task->project) {
+                $this->recalculateDailyProgress($task);
+            }
+
             // Notify watchers
             // NotificationService::notifyTaskCompleted($task);
 
             // Check if this unblocks other tasks
             $this->checkUnblockedTasks($task);
+        }
+        
+        // If moving FROM "done" type status to non-done status
+        elseif ($oldStatus && $oldStatus->type === 'done' && $newStatus && $newStatus->type !== 'done') {
+            // Clear completion timestamp
+            $task->update(['completion_date' => null]);
+            
+            // Trigger daily progress recalculation if this is a main task
+            // This will decrease the progress since task is no longer complete
+            if ($task->is_main_task === 'yes' && $task->project) {
+                $this->recalculateDailyProgress($task);
+            }
+        }
+    }
+    
+    /**
+     * Recalculate daily progress for a main task completion.
+     */
+    protected function recalculateDailyProgress(Task $task): void
+    {
+        // Get assignees and recalculate their daily progress
+        $assignees = $task->assignees;
+        $taskDate = $task->assigned_date ?? $task->due_date ?? today();
+        
+        // Ensure taskDate is a Carbon instance
+        if (!$taskDate instanceof \Carbon\Carbon) {
+            $taskDate = \Carbon\Carbon::parse($taskDate);
+        }
+        
+        foreach ($assignees as $assignee) {
+            $progressService = app(\App\Services\DailyProgressService::class);
+            $progressService->calculateDailyProgress($assignee, $task->project, $taskDate);
         }
     }
 

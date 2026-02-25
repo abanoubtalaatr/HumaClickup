@@ -2,6 +2,15 @@
 
 @section('title', 'My Dashboard')
 
+@push('styles')
+<style>
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+</style>
+@endpush
+
 @section('content')
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
     <div class="py-6">
@@ -96,27 +105,100 @@
             </div>
         </div>
 
-        <!-- Estimation Polling Section -->
-        @if($estimationPollingTasks->count() > 0)
-        <div class="mb-8 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-6" x-data="estimationPolling()">
-            <div class="flex items-center justify-between mb-4">
-                <div class="flex items-center space-x-3">
-                    <div class="p-2 bg-amber-100 rounded-lg">
-                        <svg class="h-6 w-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
+        @php
+            // Calculate 20-day program progress (same as navbar)
+            $user = auth()->user();
+            $workspaceId = session('current_workspace_id');
+            
+            $guestProjects = \App\Models\Project::where('workspace_id', $workspaceId)
+                ->whereHas('projectMembers', function ($q) use ($user) {
+                    $q->where('user_id', $user->id)->where('role', 'guest');
+                })
+                ->get();
+            
+            $programStartDate = $guestProjects->min('start_date') 
+                ? \Carbon\Carbon::parse($guestProjects->min('start_date'))
+                : now()->subDays(20);
+            
+            $programEndDate = $programStartDate->copy()->addWeeks(4);
+            
+            $allProgressData = \App\Models\DailyProgress::where('user_id', $user->id)
+                ->whereBetween('date', [$programStartDate, $programEndDate])
+                ->get();
+            
+            $totalCompletedHours = (float) $allProgressData->sum('completed_hours');
+            $targetHours = 120;
+            $programProgressPercentage = $targetHours > 0 ? min(($totalCompletedHours / $targetHours) * 100, 100) : 0;
+            
+            $statusText = $programProgressPercentage >= 100 ? '🎉 Completed!' : 
+                          ($programProgressPercentage >= 75 ? '🚀 Almost There' : 
+                          ($programProgressPercentage >= 50 ? '💪 Great Progress' : 
+                          ($programProgressPercentage >= 25 ? '⚡ Keep Going' : '🌱 Getting Started')));
+        @endphp
+
+        <!-- 20-Day Program Progress Card -->
+        <div class="mb-8 rounded-xl shadow-2xl p-8 text-white border-4 border-purple-700" style="background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 50%, #2563eb 100%);">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h2 class="text-3xl font-black mb-2 drop-shadow-lg">Program Progress</h2>
+                    <p class="text-blue-100 text-base font-medium">Overall progress across 4 weeks</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-7xl font-black drop-shadow-2xl">{{ number_format($programProgressPercentage, 0) }}%</p>
+                </div>
+            </div>
+            
+            <!-- Progress Bar with Dynamic Colors -->
+            <div class="bg-gray-800 bg-opacity-60 rounded-full h-8 shadow-2xl overflow-hidden mb-6 relative">
+                @php
+                    // Dynamic color based on progress
+                    $progressColor = $programProgressPercentage >= 75 ? 'linear-gradient(90deg, #10b981 0%, #059669 50%, #047857 100%)' : 
+                                    ($programProgressPercentage >= 50 ? 'linear-gradient(90deg, #3b82f6 0%, #2563eb 50%, #1d4ed8 100%)' : 
+                                    ($programProgressPercentage >= 25 ? 'linear-gradient(90deg, #f59e0b 0%, #d97706 50%, #b45309 100%)' : 
+                                    'linear-gradient(90deg, #ef4444 0%, #dc2626 50%, #b91c1c 100%)'));
+                @endphp
+                
+                @if($programProgressPercentage > 0)
+                    <div class="h-full rounded-full transition-all duration-1000 ease-out relative overflow-hidden"
+                         style="width: {{ $programProgressPercentage }}%; 
+                                background: {{ $progressColor }};
+                                box-shadow: 0 0 25px rgba(74, 222, 128, 0.8), inset 0 3px 6px rgba(255,255,255,0.4);">
+                        <!-- Animated shine effect -->
+                        <div class="absolute inset-0 opacity-40" style="background: linear-gradient(90deg, transparent 0%, white 50%, transparent 100%); animation: shimmer 2s infinite;"></div>
+                        <!-- Pulse effect -->
+                        <div class="absolute inset-0 animate-pulse opacity-20" style="background: radial-gradient(circle, white 0%, transparent 70%);"></div>
                     </div>
-                    <div>
-                        <h2 class="text-lg font-semibold text-amber-900">Task Estimation Polling</h2>
-                        <p class="text-sm text-amber-700">Submit your time estimates for the following tasks</p>
+                @else
+                    <div class="h-full rounded-full bg-red-600 bg-opacity-40" style="width: 2%;"></div>
+                @endif
+                
+                <!-- Progress percentage overlay -->
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <span class="text-white text-sm font-bold drop-shadow-lg">{{ $statusText }}</span>
+                </div>
+            </div>
+            
+            <!-- Stats - 2 columns -->
+            <div class="grid grid-cols-2 gap-6">
+                <div class="rounded-xl p-6 shadow-xl border-2 border-opacity-40" style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(37, 99, 235, 0.3)); border-color: rgba(255,255,255,0.3);">
+                    <p class="text-blue-100 text-sm font-bold mb-2 uppercase tracking-wide">Total Hours</p>
+                    <div class="flex items-baseline space-x-2">
+                        <p class="text-5xl font-black text-white drop-shadow-lg">{{ number_format($totalCompletedHours, 1) }}</p>
+                        <p class="text-2xl font-bold text-blue-200">/ {{ $targetHours }}h</p>
                     </div>
                 </div>
-                <span class="bg-amber-100 text-amber-800 text-xs font-medium px-2.5 py-1 rounded-full">
-                    {{ $estimationPollingTasks->where('has_estimated', false)->count() }} pending
-                </span>
+                <div class="rounded-xl p-6 shadow-xl border-2 border-opacity-40" style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(124, 58, 237, 0.3)); border-color: rgba(255,255,255,0.3);">
+                    <p class="text-purple-100 text-sm font-bold mb-2 uppercase tracking-wide">Remaining</p>
+                    <div class="flex items-baseline space-x-2">
+                        <p class="text-5xl font-black text-white drop-shadow-lg">{{ number_format(max($targetHours - $totalCompletedHours, 0), 1) }}</p>
+                        <p class="text-2xl font-bold text-purple-200">hours</p>
+                    </div>
+                </div>
             </div>
+        </div>
 
-            <div class="space-y-3">
+
+            {{-- <div class="space-y-3">
                 @foreach($estimationPollingTasks as $item)
                     <div class="bg-white rounded-lg border border-amber-100 p-4 shadow-sm">
                         <div class="flex items-center justify-between">
@@ -168,10 +250,10 @@
                         </div>
                     </div>
                 @endforeach
-            </div>
+            </div> --}}
 
             <!-- Estimation Submit Modal -->
-            <div x-show="showModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto" aria-modal="true">
+            {{-- <div x-show="showModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto" aria-modal="true">
                 <div class="flex items-center justify-center min-h-screen px-4">
                     <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" @click="closeModal()"></div>
                     <div class="relative bg-white rounded-xl shadow-xl max-w-md w-full p-6" @click.stop>
@@ -235,9 +317,8 @@
                         </form>
                     </div>
                 </div>
-            </div>
+            </div> --}}
         </div>
-        @endif
 
         <!-- Time Tracking Summary Cards -->
         <div class="mb-8">
@@ -402,6 +483,149 @@
                     @endforeach
                 </div>
             </div>
+        @endif
+
+        <!-- Estimation Polling Section - Moved to bottom -->
+        @if($estimationPollingTasks->count() > 0)
+        {{-- <div class="mt-8 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-6" x-data="estimationPolling()"> --}}
+            {{-- <div class="flex items-center justify-between mb-4"> --}}
+                {{-- <div class="flex items-center space-x-3"> --}}
+                    {{-- <div class="p-2 bg-amber-100 rounded-lg">
+                        <svg class="h-6 w-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div> --}}
+                    {{-- <div>
+                        <h2 class="text-lg font-semibold text-amber-900">Task Estimation Polling</h2>
+                        <p class="text-sm text-amber-700">Submit your time estimates for the following tasks</p>
+                    </div> --}}
+                {{-- </div> --}}
+                {{-- <span class="bg-amber-100 text-amber-800 text-xs font-medium px-2.5 py-1 rounded-full">
+                    {{ $estimationPollingTasks->where('has_estimated', false)->count() }} pending
+                </span> --}}
+            {{-- </div> --}}
+
+            {{-- <div class="space-y-3">
+                @foreach($estimationPollingTasks as $item)
+                    <div class="bg-white rounded-lg border border-amber-100 p-4 shadow-sm">
+                        <div class="flex items-center justify-between">
+                            <div class="flex-1">
+                                <div class="flex items-center space-x-2">
+                                    <h3 class="font-medium text-gray-900">{{ $item['task']->title }}</h3>
+                                    @if($item['has_estimated'])
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
+                                            <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                                            </svg>
+                                            Submitted
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
+                                            Awaiting your estimate
+                                        </span>
+                                    @endif
+                                </div>
+                                <p class="text-sm text-gray-500 mt-1">{{ $item['task']->project?->name }}</p>
+                                
+                                <!-- Progress indicator -->
+                                <div class="mt-2 flex items-center space-x-2">
+                                    <div class="flex-1 bg-gray-200 rounded-full h-2 max-w-xs">
+                                        <div class="bg-amber-500 h-2 rounded-full" style="width: {{ $item['progress']['percentage'] }}%"></div>
+                                    </div>
+                                    <span class="text-xs text-gray-500">{{ $item['progress']['submitted'] }}/{{ $item['progress']['total'] }} submitted</span>
+                                </div>
+                            </div>
+
+                            <div class="ml-4">
+                                @if($item['has_estimated'])
+                                    <div class="text-right">
+                                        <p class="text-sm text-gray-500">Your estimate</p>
+                                        <p class="text-lg font-semibold text-green-600">{{ $item['my_estimation']->getFormattedEstimation() }}</p>
+                                        <button @click="openEditModal({{ $item['task']->id }}, {{ $item['my_estimation']->estimated_minutes }})" 
+                                                class="text-xs text-indigo-600 hover:text-indigo-800">Edit</button>
+                                    </div>
+                                @else
+                                    <button @click="openSubmitModal({{ $item['task']->id }}, '{{ addslashes($item['task']->title) }}')" 
+                                            class="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-amber-600 hover:bg-amber-700">
+                                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                        </svg>
+                                        Submit Estimate
+                                    </button>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
+            </div> --}}
+
+            <!-- Estimation Submit Modal -->
+            {{-- <div x-show="showModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto" aria-modal="true">
+                <div class="flex items-center justify-center min-h-screen px-4">
+                    <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" @click="closeModal()"></div>
+                    <div class="relative bg-white rounded-xl shadow-xl max-w-md w-full p-6" @click.stop>
+                        <div class="absolute right-4 top-4">
+                            <button @click="closeModal()" class="text-gray-400 hover:text-gray-500">
+                                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </button>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <div class="flex items-center space-x-3">
+                                <div class="p-2 bg-amber-100 rounded-lg">
+                                    <svg class="h-6 w-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-lg font-semibold text-gray-900">Submit Time Estimate</h3>
+                                    <p class="text-sm text-gray-500" x-text="taskTitle"></p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <form @submit.prevent="submitEstimation()">
+                            <div class="space-y-4">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Hours</label>
+                                        <input type="number" x-model="estimatedHours" min="0" max="999" 
+                                               class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
+                                               placeholder="0">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700">Minutes</label>
+                                        <input type="number" x-model="estimatedMinutes" min="0" max="59"
+                                               class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
+                                               placeholder="0">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700">Notes (optional)</label>
+                                    <textarea x-model="notes" rows="2"
+                                              class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500"
+                                              placeholder="Any assumptions or notes about this estimate..."></textarea>
+                                </div>
+                            </div>
+
+                            <div class="mt-6 flex justify-end space-x-3">
+                                <button type="button" @click="closeModal()" 
+                                        class="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50">
+                                    Cancel
+                                </button>
+                                <button type="submit" :disabled="submitting"
+                                        class="px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 disabled:opacity-50">
+                                    <span x-show="!submitting">Submit Estimate</span>
+                                    <span x-show="submitting">Submitting...</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div> --}}
+        {{-- </div> --}}
         @endif
     </div>
 </div>

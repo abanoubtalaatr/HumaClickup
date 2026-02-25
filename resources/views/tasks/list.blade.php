@@ -21,7 +21,7 @@
                         </svg>
                         Kanban
                     </a>
-                    <a href="{{ $project ? route('projects.tasks.index', $project) : route('tasks.list') }}" 
+                    <a href="{{ $project ? route('projects.tasks.list', $project) : route('tasks.list') }}" 
                        class="inline-flex items-center px-4 py-2 text-sm font-medium rounded-r-lg border bg-indigo-600 text-white border-indigo-600">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
@@ -63,7 +63,7 @@
 
         <!-- Filters -->
         <div class="mb-6 bg-white p-4 rounded-lg shadow">
-            <form method="GET" action="{{ $project ? route('projects.tasks.index', $project) : route('tasks.list') }}">
+            <form method="GET" action="{{ $project ? route('projects.tasks.list', $project) : route('tasks.list') }}">
                 <div class="grid grid-cols-1 md:grid-cols-6 gap-4 mb-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-2">Project</label>
@@ -129,7 +129,7 @@
                     </div>
                 </div>
                 <div class="flex items-center justify-end space-x-3">
-                    <a href="{{ $project ? route('projects.tasks.index', $project) : route('tasks.list') }}" 
+                    <a href="{{ $project ? route('projects.tasks.list', $project) : route('tasks.list') }}" 
                        class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
                         Clear Filters
                     </a>
@@ -310,9 +310,9 @@
                                         x-model="newTask.related_task_id"
                                         class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                                     <option value="">No related task</option>
-                                    @if(isset($tasks) && $tasks->count() > 0)
-                                        @foreach($tasks as $task)
-                                            <option value="{{ $task->id }}">{{ $task->title }}</option>
+                                    @if(isset($relatedTasks) && $relatedTasks->count() > 0)
+                                        @foreach($relatedTasks as $relatedTask)
+                                            <option value="{{ $relatedTask->id }}">{{ $relatedTask->title }}</option>
                                         @endforeach
                                     @endif
                                 </select>

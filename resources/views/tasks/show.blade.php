@@ -64,6 +64,58 @@
                 </div>
                 @endif
 
+                <!-- Attachments -->
+                @if($task->attachments && $task->attachments->count() > 0)
+                <div class="bg-white shadow rounded-lg p-6">
+                    <h2 class="text-lg font-medium text-gray-900 mb-4">Attachments</h2>
+                    <div class="space-y-3">
+                        @foreach($task->attachments as $attachment)
+                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                                <div class="flex items-center space-x-3 flex-1 min-w-0">
+                                    <div class="flex-shrink-0">
+                                        @php
+                                            $extension = pathinfo($attachment->file_name, PATHINFO_EXTENSION);
+                                            $isImage = in_array(strtolower($extension), ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp']);
+                                        @endphp
+                                        @if($isImage)
+                                            <svg class="w-8 h-8 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                            </svg>
+                                        @else
+                                            <svg class="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                                            </svg>
+                                        @endif
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-medium text-gray-900 truncate">{{ $attachment->file_name }}</p>
+                                        <div class="flex items-center space-x-2 text-xs text-gray-500">
+                                            <span>{{ number_format($attachment->file_size / 1024, 2) }} KB</span>
+                                            <span>•</span>
+                                            <span>{{ $attachment->created_at->diffForHumans() }}</span>
+                                            @if($attachment->user)
+                                                <span>•</span>
+                                                <span>{{ $attachment->user->name }}</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex-shrink-0 ml-3">
+                                    <a href="{{ Storage::url($attachment->file_path) }}" 
+                                       download="{{ $attachment->file_name }}"
+                                       class="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                        <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                                        </svg>
+                                        Download
+                                    </a>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+
                 <!-- Comments -->
                 <div class="bg-white shadow rounded-lg p-6">
                     <h2 class="text-lg font-medium text-gray-900 mb-4">Comments</h2>
@@ -199,15 +251,39 @@
                 <div class="bg-white shadow rounded-lg p-6">
                     <label class="block text-sm font-medium text-gray-700 mb-2">Time Tracking</label>
                     <div class="space-y-3">
-                        <div class="flex items-center justify-between">
-                            <span class="text-sm text-gray-600">Estimated</span>
-                            <span class="text-sm font-medium text-gray-900">
-                                {{ $task->estimated_time ? round($task->estimated_time / 60, 1) . 'h' : 'Not set' }}
-                            </span>
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="text-sm text-gray-600">Estimated Time</span>
+                                <span class="text-sm font-medium text-gray-900">
+                                    {{ $task->estimated_time ? round($task->estimated_time / 60, 1) . 'h' : 'Not set' }}
+                                </span>
+                            </div>
+                            @if($task->estimated_time && $task->creator)
+                            <div class="flex items-center text-xs text-gray-500 mt-1">
+                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                </svg>
+                                <span>Set by {{ $task->creator->name }}</span>
+                                @if($task->created_at)
+                                    <span class="ml-1">• {{ $task->created_at->format('M d, Y') }}</span>
+                                @endif
+                            </div>
+                            @endif
+                            @if($task->estimation_edited_by && $task->estimation_completed_at)
+                            <div class="flex items-center text-xs text-gray-500 mt-1">
+                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                                </svg>
+                                <span>Edited by {{ optional(\App\Models\User::find($task->estimation_edited_by))->name ?? 'Unknown' }}</span>
+                                <span class="ml-1">• {{ \Carbon\Carbon::parse($task->estimation_completed_at)->format('M d, Y') }}</span>
+                            </div>
+                            @endif
                         </div>
-                        <div class="flex items-center justify-between">
-                            <span class="text-sm text-gray-600">Logged</span>
-                            <span class="text-sm font-medium text-gray-900">{{ $task->getFormattedTimeLogged() }}</span>
+                        <div class="border-t pt-3">
+                            <div class="flex items-center justify-between">
+                                <span class="text-sm text-gray-600">Time Logged</span>
+                                <span class="text-sm font-medium text-gray-900">{{ $task->getFormattedTimeLogged() }}</span>
+                            </div>
                         </div>
                     </div>
                 </div>

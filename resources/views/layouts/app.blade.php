@@ -31,6 +31,13 @@
         <!-- Navigation -->
         @include('partials.navigation')
         
+        <!-- Guest Progress Bar (20-day program) -->
+        @auth
+            @if(session('current_workspace_id') && auth()->user()->isGuestInWorkspace(session('current_workspace_id')))
+                @include('partials.guest-progress-bar')
+            @endif
+        @endauth
+        
         <!-- Impersonation Banner (Admin viewing as another user) -->
         @auth
             @include('partials.impersonation-banner')

@@ -26,6 +26,9 @@ class User extends Authenticatable
         'status',
         'whatsapp_number',
         'slack_channel_link',
+        'current_week_hours',
+        'week_start_date',
+        'meets_weekly_target',
     ];
 
     protected $hidden = [
@@ -40,6 +43,9 @@ class User extends Authenticatable
             'password' => 'hashed',
             'preferences' => 'array',
             'last_activity_at' => 'datetime',
+            'current_week_hours' => 'decimal:2',
+            'week_start_date' => 'date',
+            'meets_weekly_target' => 'boolean',
         ];
     }
 
@@ -106,8 +112,42 @@ class User extends Authenticatable
     public function groups(): BelongsToMany
     {
         return $this->belongsToMany(Group::class, 'group_user')
-            ->withPivot('assigned_at')
+            ->withPivot('role', 'assigned_by_user_id', 'assigned_at')
             ->withTimestamps();
+    }
+
+    /**
+     * Projects where this user is assigned as tester.
+     */
+    public function testerProjects(): BelongsToMany
+    {
+        return $this->belongsToMany(Project::class, 'project_testers', 'tester_id', 'project_id')
+            ->withPivot('assigned_by_user_id', 'assigned_at', 'status', 'notes')
+            ->withTimestamps();
+    }
+
+    /**
+     * Daily progress records.
+     */
+    public function dailyProgress(): HasMany
+    {
+        return $this->hasMany(DailyProgress::class);
+    }
+
+    /**
+     * Attendance records.
+     */
+    public function attendances(): HasMany
+    {
+        return $this->hasMany(Attendance::class, 'guest_id');
+    }
+
+    /**
+     * Attendances checked by this user as mentor.
+     */
+    public function mentorAttendances(): HasMany
+    {
+        return $this->hasMany(Attendance::class, 'mentor_id');
     }
 
     /**
@@ -359,5 +399,99 @@ class User extends Authenticatable
         }
         
         return false;
+    }
+
+    /**
+     * Update weekly hours tracking.
+     */
+    public function updateWeeklyHours(float $hours): void
+    {
+        // Check if we need to reset the week
+        if (!$this->week_start_date || $this->week_start_date->lt(now()->startOfWeek())) {
+            $this->resetWeeklyTracking();
+        }
+
+        $this->increment('current_week_hours', $hours);
+        $this->checkWeeklyTarget();
+    }
+
+    /**
+     * Reset weekly tracking.
+     */
+    public function resetWeeklyTracking(): void
+    {
+        $this->update([
+            'current_week_hours' => 0,
+            'week_start_date' => now()->startOfWeek(),
+            'meets_weekly_target' => false,
+        ]);
+    }
+
+    /**
+     * Check if weekly target is met (30 hours).
+     */
+    public function checkWeeklyTarget(float $targetHours = 30): void
+    {
+        $meetsTarget = $this->current_week_hours >= $targetHours;
+        
+        if ($this->meets_weekly_target !== $meetsTarget) {
+            $this->update(['meets_weekly_target' => $meetsTarget]);
+        }
+    }
+
+    /**
+     * Get progress towards weekly target.
+     */
+    public function getWeeklyProgress(float $targetHours = 30): array
+    {
+        return [
+            'current_hours' => $this->current_week_hours,
+            'target_hours' => $targetHours,
+            'percentage' => min(100, ($this->current_week_hours / $targetHours) * 100),
+            'remaining_hours' => max(0, $targetHours - $this->current_week_hours),
+            'meets_target' => $this->meets_weekly_target,
+        ];
+    }
+
+    /**
+     * Get today's completed tasks for this user in a project.
+     */
+    public function getTodayCompletedTasks(int $projectId): int
+    {
+        return $this->assignedTasks()
+            ->where('project_id', $projectId)
+            ->whereDate('completion_date', today())
+            ->whereHas('status', fn($q) => $q->where('type', 'done'))
+            ->count();
+    }
+
+    /**
+     * Get today's hours for this user in a project.
+     */
+    public function getTodayHours(int $projectId): float
+    {
+        return $this->dailyProgress()
+            ->where('project_id', $projectId)
+            ->whereDate('date', today())
+            ->sum('total_hours');
+    }
+
+    /**
+     * Check if user is a tester in a specific project.
+     */
+    public function isTesterInProject(int $projectId): bool
+    {
+        return $this->testerProjects()->where('project_id', $projectId)->exists();
+    }
+
+    /**
+     * Check if user is an active tester in a specific project.
+     */
+    public function isActiveTesterInProject(int $projectId): bool
+    {
+        return $this->testerProjects()
+            ->where('project_id', $projectId)
+            ->wherePivot('status', 'active')
+            ->exists();
     }
 }

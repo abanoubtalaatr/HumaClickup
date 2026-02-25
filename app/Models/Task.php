@@ -40,6 +40,12 @@ class Task extends Model
         'recurring_settings',
         'is_archived',
         'is_private',
+        'bug_time_used',
+        'bug_time_limit',
+        'bugs_count',
+        'is_main_task',
+        'assigned_date',
+        'completion_date',
     ];
 
     protected function casts(): array
@@ -54,6 +60,11 @@ class Task extends Model
             'estimated_minutes' => 'integer',
             'estimation_completed_at' => 'datetime',
             'type' => 'string',
+            'bug_time_used' => 'decimal:2',
+            'bug_time_limit' => 'decimal:2',
+            'bugs_count' => 'integer',
+            'assigned_date' => 'date',
+            'completion_date' => 'date',
         ];
     }
 
@@ -212,6 +223,17 @@ class Task extends Model
     public function scopeTasks(Builder $query): Builder
     {
         return $query->where('type', 'task');
+    }
+
+    public function scopeMainTasks(Builder $query): Builder
+    {
+        return $query->where('is_main_task', 'yes');
+    }
+
+    public function scopeCompletedToday(Builder $query): Builder
+    {
+        return $query->whereDate('completion_date', today())
+            ->whereHas('status', fn($q) => $q->where('type', 'done'));
     }
 
     // Helper Methods
@@ -412,5 +434,76 @@ class Task extends Model
         } else {
             return "{$minutes}m";
         }
+    }
+
+    /**
+     * Check if this is a main task (minimum 6 hours).
+     */
+    public function isMainTask(): bool
+    {
+        return $this->is_main_task === 'yes';
+    }
+
+    /**
+     * Calculate bug time limit (20% of main task estimated time).
+     */
+    public function calculateBugTimeLimit(): float
+    {
+        if (!$this->isMainTask() || !$this->estimated_time) {
+            return 0;
+        }
+
+        $percentage = $this->project->bug_time_allocation_percentage ?? 20;
+        return ($this->estimated_time * $percentage) / 100;
+    }
+
+    /**
+     * Check if bug time limit is exceeded.
+     */
+    public function isBugTimeLimitExceeded(): bool
+    {
+        return $this->bug_time_used >= $this->bug_time_limit;
+    }
+
+    /**
+     * Get remaining bug time.
+     */
+    public function getRemainingBugTime(): float
+    {
+        return max(0, $this->bug_time_limit - $this->bug_time_used);
+    }
+
+    /**
+     * Add bug time and update count.
+     */
+    public function addBugTime(float $hours): void
+    {
+        $this->increment('bug_time_used', $hours);
+        $this->increment('bugs_count');
+    }
+
+    /**
+     * Validate if a bug can be created based on remaining time.
+     */
+    public function canAddBug(float $estimatedHours): bool
+    {
+        $remainingTime = $this->getRemainingBugTime();
+        return $estimatedHours <= $remainingTime;
+    }
+
+    /**
+     * Mark task as completed and update completion date.
+     */
+    public function markAsCompleted(): void
+    {
+        $this->update(['completion_date' => now()]);
+    }
+
+    /**
+     * Get task completion hours (estimated time).
+     */
+    public function getCompletionHours(): float
+    {
+        return $this->estimated_time ?? 0;
     }
 }
