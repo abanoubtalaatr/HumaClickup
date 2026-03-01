@@ -33,12 +33,15 @@ class ProjectController extends Controller
         $user = auth()->user();
         $tester = $user->hasTestingTrackInWorkspace($workspaceId);
 
-        // Guests can only see projects they have assigned tasks in
+        // Guests can only see projects they're assigned to: have tasks assigned OR are project guest members
         if ($user->isGuestInWorkspace($workspaceId) && !$tester) {
             $projects = Project::where('workspace_id', $workspaceId)
                 ->where('is_archived', false)
-                ->whereHas('tasks', function ($query) use ($user) {
-                    $query->whereHas('assignees', fn($q) => $q->where('user_id', $user->id));
+                ->where(function ($query) use ($user) {
+                    $query->whereHas('tasks', function ($q) use ($user) {
+                        $q->whereHas('assignees', fn($aq) => $aq->where('user_id', $user->id));
+                    })
+                    ->orWhereHas('guests', fn($q) => $q->where('user_id', $user->id));
                 })
                 ->withCount([
                     'tasks' => function ($query) use ($user) {
@@ -50,12 +53,18 @@ class ProjectController extends Controller
                 ->with(['space', 'createdBy'])
                 ->orderBy('updated_at', 'desc')
                 ->get();
-        }elseif($tester && $user->hasTestingTrackInWorkspace($workspaceId) && $user->isGuestInWorkspace($workspaceId)) {
+        }
+        // Testing-track guests see projects they're assigned to: project_testers, project_members (tester), or tasks
+        elseif ($tester && $user->hasTestingTrackInWorkspace($workspaceId) && $user->isGuestInWorkspace($workspaceId)) {
             $projects = Project::where('workspace_id', $workspaceId)
-            ->whereHas('testers', function ($query) use ($user) {
-                $query->where('tester_id', $user->id);
-            })
                 ->where('is_archived', false)
+                ->where(function ($query) use ($user) {
+                    $query->whereHas('testers', fn($q) => $q->where('tester_id', $user->id))
+                        ->orWhereHas('projectMembers', fn($q) => $q->where('role', 'tester')->where('user_id', $user->id))
+                        ->orWhereHas('tasks', function ($q) use ($user) {
+                            $q->whereHas('assignees', fn($aq) => $aq->where('user_id', $user->id));
+                        });
+                })
                 ->withCount([
                     'tasks',
                     'tasks as bugs_count' => fn($q) => $q->where('type', 'bug'),
