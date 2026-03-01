@@ -164,7 +164,7 @@
                                        :id="'task-desc-' + task.id"
                                        rows="4"
                                        placeholder="Describe the task in detail..."
-                                       class="tinymce-editor block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-base leading-relaxed transition-all"></textarea>
+                                       class="block w-full px-4 py-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-base leading-relaxed transition-all"></textarea>
                             </div>
 
                             <!-- Estimated Hours -->
@@ -246,7 +246,7 @@
                                                        :id="'subtask-desc-' + task.id + '-' + subtask.id"
                                                        rows="2"
                                                        placeholder="Subtask description (optional)..."
-                                                       class="tinymce-editor block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm leading-relaxed focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                                                       class="block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm leading-relaxed focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"></textarea>
                                             </div>
                                         </div>
                                     </template>
@@ -327,34 +327,7 @@
 
 @push('scripts')
 <script>
-document.addEventListener('alpine:initialized', () => {
-    // Initialize TinyMCE for description fields when Step 2 is shown
-    const initTinyMCE = () => {
-        if (typeof tinymce !== 'undefined') {
-            tinymce.init({
-                selector: 'textarea.tinymce-editor',
-                menubar: false,
-                height: 200,
-                plugins: 'lists link code',
-                toolbar: 'undo redo | bold italic | bullist numlist | link | removeformat',
-                branding: false,
-                statusbar: false,
-                content_style: 'body { font-family: Inter, sans-serif; font-size: 14px; line-height: 1.6; }',
-                setup: function(editor) {
-                    editor.on('change', function() {
-                        editor.save(); // Sync content back to textarea (Alpine x-model)
-                    });
-                }
-            });
-        }
-    };
-
-    // Initialize when moving to Step 2
-    window.addEventListener('step-changed', (e) => {
-        if (e.detail === 2) {
-            setTimeout(initTinyMCE, 300); // Delay to ensure DOM is ready
-        }
-    });
-});
+// Task and subtask descriptions use plain textareas so Alpine x-model syncs correctly
+// (existing descriptions show and edits are saved with the form)
 </script>
 @endpush
