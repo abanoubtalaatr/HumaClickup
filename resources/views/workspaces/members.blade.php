@@ -342,6 +342,12 @@
                             </div>
                             @if($member->id !== $workspace->owner_id)
                                 <div class="flex items-center space-x-2">
+                                    <button @click="openChangePasswordModal({{ json_encode(['id' => $member->id, 'name' => $member->name]) }})" 
+                                            class="text-gray-400 hover:text-amber-600 dark:hover:text-amber-400" title="Change password">
+                                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+                                        </svg>
+                                    </button>
                                     <button @click="openEditModal({{ json_encode([
                                         'id' => $member->id,
                                         'name' => $member->name,
@@ -411,6 +417,12 @@
                                             </div>
                                         </div>
                                         <div class="flex items-center space-x-2 ml-4">
+                                            <button @click="openChangePasswordModal({{ json_encode(['id' => $guest->id, 'name' => $guest->name]) }})" 
+                                                    class="text-gray-400 hover:text-amber-600 dark:hover:text-amber-400" title="Change password">
+                                                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+                                                </svg>
+                                            </button>
                                             <button @click="openEditModal({{ json_encode([
                                                 'id' => $guest->id,
                                                 'name' => $guest->name,
@@ -492,6 +504,12 @@
                                         </div>
                                     </div>
                                     <div class="flex items-center space-x-2 ml-4">
+                                        <button @click="openChangePasswordModal({{ json_encode(['id' => $guest->id, 'name' => $guest->name]) }})" 
+                                                class="text-gray-400 hover:text-amber-600 dark:hover:text-amber-400" title="Change password">
+                                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+                                            </svg>
+                                        </button>
                                         <button @click="openEditModal({{ json_encode([
                                             'id' => $guest->id,
                                             'name' => $guest->name,
@@ -1086,6 +1104,68 @@
             </div>
         </div>
     </div>
+
+    @if($isAdmin)
+    <!-- Change Password Modal -->
+    <div x-show="showChangePasswordModal" x-cloak class="relative z-50" aria-modal="true">
+        <div class="fixed inset-0 bg-gray-500/75 dark:bg-gray-900/75 transition-opacity"></div>
+        <div class="fixed inset-0 z-10 overflow-y-auto">
+            <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+                <div @click.stop class="relative transform overflow-hidden rounded-lg bg-white dark:bg-gray-800 px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
+                    <div class="absolute right-0 top-0 pr-4 pt-4">
+                        <button @click="showChangePasswordModal = false" class="rounded-md bg-white dark:bg-gray-800 text-gray-400 hover:text-gray-500">
+                            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="sm:flex sm:items-start">
+                        <div class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900 sm:mx-0 sm:h-10 sm:w-10">
+                            <svg class="h-6 w-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/>
+                            </svg>
+                        </div>
+                        <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left flex-1">
+                            <h3 class="text-lg font-semibold leading-6 text-gray-900 dark:text-white">Change Password</h3>
+                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Set a new password for <span x-text="changePasswordMember.name"></span></p>
+                        </div>
+                    </div>
+                    <form :action="`/workspaces/{{ $workspace->id }}/members/${changePasswordMember.id}/change-password`" method="POST" class="mt-5">
+                        @csrf
+                        @method('PUT')
+                        <div class="space-y-4">
+                            <div>
+                                <label for="new_password" class="block text-sm font-medium text-gray-700 dark:text-gray-300">New Password</label>
+                                <input type="password" name="password" id="new_password" required minlength="8"
+                                       class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                       placeholder="Enter new password">
+                                @error('password')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
+                            </div>
+                            <div>
+                                <label for="password_confirmation" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Confirm Password</label>
+                                <input type="password" name="password_confirmation" id="password_confirmation" required minlength="8"
+                                       class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                       placeholder="Confirm new password">
+                            </div>
+                        </div>
+                        <div class="mt-5 sm:mt-6 sm:flex sm:flex-row-reverse">
+                            <button type="submit"
+                                    class="inline-flex w-full justify-center rounded-md bg-amber-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-500 sm:ml-3 sm:w-auto">
+                                Update Password
+                            </button>
+                            <button type="button" @click="showChangePasswordModal = false"
+                                    class="mt-3 inline-flex w-full justify-center rounded-md bg-white dark:bg-gray-700 px-3 py-2 text-sm font-semibold text-gray-900 dark:text-white shadow-sm ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 sm:mt-0 sm:w-auto">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
 </div>
 
 @push('scripts')
@@ -1097,6 +1177,7 @@ function membersManager() {
         showAssignModal: false,
         showEditModal: false,
         showRemoveModal: false,
+        showChangePasswordModal: false,
         guestSearch: '',
         assignGuestSearch: '',
         newMemberRole: '{{ in_array("guest", $roles) ? "guest" : (in_array("member", $roles) ? "member" : "admin") }}',
@@ -1105,6 +1186,7 @@ function membersManager() {
         selectedGuestIds: [],
         editingMember: { id: null, name: '', email: '', whatsapp_number: '', slack_channel_link: '', role: '', track_id: null, attendance_days: [] },
         removingMember: { id: null, name: '', role: '' },
+        changePasswordMember: { id: null, name: '' },
         memberTasks: [],
         otherMembers: [],
         reassignTo: '',
@@ -1113,6 +1195,11 @@ function membersManager() {
         openEditModal(member) {
             this.editingMember = { ...member };
             this.showEditModal = true;
+        },
+
+        openChangePasswordModal(member) {
+            this.changePasswordMember = { id: member.id, name: member.name };
+            this.showChangePasswordModal = true;
         },
 
         async openRemoveModal(member) {

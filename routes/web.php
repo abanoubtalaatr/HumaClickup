@@ -134,6 +134,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/{workspace}/members/invite', [WorkspaceController::class, 'inviteMember'])->name('members.invite');
         Route::post('/{workspace}/members/assign-guests', [WorkspaceController::class, 'assignGuestsToMember'])->name('members.assign-guests');
         Route::put('/{workspace}/members/{user}', [WorkspaceController::class, 'updateMemberRole'])->name('members.update');
+        Route::put('/{workspace}/members/{targetUser}/change-password', [WorkspaceController::class, 'changeMemberPassword'])->name('members.change-password');
         Route::delete('/{workspace}/members/{targetUser}', [WorkspaceController::class, 'removeMember'])->name('members.remove');
         Route::get('/{workspace}/members/{user}/tasks', [WorkspaceController::class, 'getMemberTasks'])->name('members.tasks');
         

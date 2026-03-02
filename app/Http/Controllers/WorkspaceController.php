@@ -9,6 +9,7 @@ use App\Models\Workspace;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Models\WorkspaceUser;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 
 class WorkspaceController extends Controller
@@ -410,6 +411,36 @@ class WorkspaceController extends Controller
         ]);
 
         return back()->with('success', "Updated {$targetUser->name}'s information successfully.");
+    }
+
+    /**
+     * Change a member's password (admin/owner only)
+     */
+    public function changeMemberPassword(Request $request, Workspace $workspace, User $targetUser)
+    {
+        $user = auth()->user();
+
+        if (!$user->isAdminInWorkspace($workspace->id)) {
+            abort(403, 'You do not have permission to change member passwords.');
+        }
+
+        if ($workspace->owner_id === $targetUser->id) {
+            return back()->with('error', 'Cannot change the workspace owner\'s password from here. They should use their profile settings.');
+        }
+
+        if (!$workspace->users()->where('user_id', $targetUser->id)->exists()) {
+            return back()->with('error', 'User is not a member of this workspace.');
+        }
+
+        $validated = $request->validate([
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $targetUser->update([
+            'password' => Hash::make($validated['password']),
+        ]);
+
+        return back()->with('success', "Password for {$targetUser->name} has been updated successfully.");
     }
 
     /**
