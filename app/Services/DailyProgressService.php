@@ -68,13 +68,14 @@ class DailyProgressService
         // Check if task is complete and completed before 11 PM (23:00)
         $isComplete = $this->isTaskComplete($mainTask, $date);
 
-        // Calculate completed hours
-        // Rule: Only count hours if task is DONE and completed before 11 PM of task date
-        $completedHours = $isComplete ? $mainTask->estimated_time : 0;
+        // Calculate completed hours (task.estimated_time may be stored as hours or minutes)
+        $completedHours = $isComplete ? $this->taskEstimatedTimeToHours($mainTask->estimated_time) : 0;
+        $completedHours = $this->clampCompletedHours($completedHours);
 
         // Calculate progress percentage
-        $progressPercentage = ($completedHours / $progress->required_hours) * 100;
-        $progressPercentage = min($progressPercentage, 100); // Cap at 100%
+        $required = (float) $progress->required_hours;
+        $progressPercentage = $required > 0 ? ($completedHours / $required) * 100 : 0;
+        $progressPercentage = min(max($progressPercentage, 0), 100);
 
         // Update progress
         $progress->update([
@@ -84,6 +85,34 @@ class DailyProgressService
         ]);
 
         return $progress;
+    }
+
+    /**
+     * Convert task estimated_time to hours.
+     * DB stores either hours (e.g. 6 from project wizard) or minutes (e.g. 360 from task edit).
+     */
+    private function taskEstimatedTimeToHours($estimatedTime): float
+    {
+        if ($estimatedTime === null || $estimatedTime === '') {
+            return 0.0;
+        }
+        $value = (float) $estimatedTime;
+        if ($value <= 0) {
+            return 0.0;
+        }
+        // If value > 24, assume it's stored in minutes
+        if ($value > 24) {
+            return round($value / 60, 2);
+        }
+        return round($value, 2);
+    }
+
+    /**
+     * Clamp completed_hours to valid decimal(5,2) range for daily_progress (0 .. 999.99).
+     */
+    private function clampCompletedHours(float $hours): float
+    {
+        return round(min(max($hours, 0), 999.99), 2);
     }
 
     /**

@@ -126,6 +126,7 @@ class DailyProgress extends Model
 
     /**
      * Update progress metrics (for service layer).
+     * Clamps to valid DB range: completed_hours 0..999.99, progress 0..100.
      */
     public function updateProgress(float $completedHours): void
     {
@@ -133,6 +134,7 @@ class DailyProgress extends Model
             throw new \Exception('Cannot update approved progress.');
         }
 
+        $completedHours = round(min(max($completedHours, 0), 999.99), 2);
         $this->completed_hours = $completedHours;
         $this->progress_percentage = $this->calculateProgress();
         $this->save();
