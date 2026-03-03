@@ -24,7 +24,7 @@
     <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
     
     <!-- TinyMCE Rich Text Editor -->
-    <script src="https://cdn.tiny.cloud/1/5om9u8lqipkhswsxm2r8uxaph1pg60pxfm1kvlg6m3r4dp9z/tinymce/8/tinymce.min.js" referrerpolicy="origin" crossorigin="anonymous"></script>
+    <script src="https://cdn.tiny.cloud/1/8xkm0tid5ahc7gxkjcg7ifxno5c4t02jppr17kf6j78qu76g/tinymce/8/tinymce.min.js" referrerpolicy="origin" crossorigin="anonymous"></script>
 </head>
 <body class="font-sans antialiased bg-gray-50">
     <div class="min-h-screen">
