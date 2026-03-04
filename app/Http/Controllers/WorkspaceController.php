@@ -241,15 +241,23 @@ class WorkspaceController extends Controller
         // Check if admin
         $isAdmin = $user->isAdminInWorkspace($workspace->id);
 
-        // Missing main tasks per user: main tasks (in workspace projects) assigned to them that are not Done/Closed
+        // Missing = overdue main tasks: due/assigned date is before today and not moved to Done/Closed
         $missingMainTasksByUserId = [];
         $workspaceProjectIds = $workspace->projects()->pluck('id');
         if ($workspaceProjectIds->isNotEmpty()) {
+            $today = now()->startOfDay();
             $incompleteMainTaskIds = Task::withoutGlobalScope('workspace')
                 ->where('workspace_id', $workspace->id)
                 ->whereIn('project_id', $workspaceProjectIds)
                 ->where('is_main_task', 'yes')
                 ->whereHas('status', fn($q) => $q->where('type', '!=', 'done'))
+                ->where(function ($q) use ($today) {
+                    $q->where(function ($q2) use ($today) {
+                        $q2->whereNotNull('due_date')->where('due_date', '<', $today);
+                    })->orWhere(function ($q2) use ($today) {
+                        $q2->whereNotNull('assigned_date')->where('assigned_date', '<', $today);
+                    });
+                })
                 ->pluck('id');
             if ($incompleteMainTaskIds->isNotEmpty()) {
                 $counts = DB::table('task_assignees')

@@ -279,7 +279,7 @@
                                                     @endif
                                                     @php $missingCount = ($missingMainTasksByUserId ?? [])[$member->id] ?? 0; @endphp
                                                     @if($missingCount > 0)
-                                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200" title="Main tasks not yet Done/Closed (expected one per day)">
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200" title="Overdue main tasks (due/assigned date before today) not yet Done or Closed">
                                                             {{ $missingCount }} missing
                                                         </span>
                                                     @endif
@@ -344,7 +344,7 @@
                                         </span>
                                         @php $missingCount = ($missingMainTasksByUserId ?? [])[$member->id] ?? 0; @endphp
                                         @if($missingCount > 0)
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200" title="Main tasks not yet Done/Closed (expected one per day)">
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200" title="Overdue main tasks (due/assigned date before today) not yet Done or Closed">
                                                 {{ $missingCount }} missing
                                             </span>
                                         @endif
@@ -426,7 +426,7 @@
                                                     </span>
                                                     @php $missingCount = ($missingMainTasksByUserId ?? [])[$guest->id] ?? 0; @endphp
                                                     @if($missingCount > 0)
-                                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200" title="Main tasks not yet Done/Closed (expected one per day)">
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200" title="Overdue main tasks (due/assigned date before today) not yet Done or Closed">
                                                             {{ $missingCount }} missing
                                                         </span>
                                                     @endif
@@ -519,7 +519,7 @@
                                                 </span>
                                                 @php $missingCount = ($missingMainTasksByUserId ?? [])[$guest->id] ?? 0; @endphp
                                                 @if($missingCount > 0)
-                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200" title="Main tasks not yet Done/Closed (expected one per day)">
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200" title="Overdue main tasks (due/assigned date before today) not yet Done or Closed">
                                                         {{ $missingCount }} missing
                                                     </span>
                                                 @endif
