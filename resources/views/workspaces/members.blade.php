@@ -277,6 +277,12 @@
                                                             {{ $memberTrack->name }}
                                                         </span>
                                                     @endif
+                                                    @php $missingCount = ($missingMainTasksByUserId ?? [])[$member->id] ?? 0; @endphp
+                                                    @if($missingCount > 0)
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200" title="Main tasks not yet Done/Closed (expected one per day)">
+                                                            {{ $missingCount }} missing
+                                                        </span>
+                                                    @endif
                                                 </div>
                                                 <p class="text-xs text-gray-500 dark:text-gray-400">{{ $member->email }}</p>
                                             </div>
@@ -336,6 +342,12 @@
                                             </svg>
                                             {{ $member->tasks_count }} {{ $member->tasks_count === 1 ? 'task' : 'tasks' }}
                                         </span>
+                                        @php $missingCount = ($missingMainTasksByUserId ?? [])[$member->id] ?? 0; @endphp
+                                        @if($missingCount > 0)
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200" title="Main tasks not yet Done/Closed (expected one per day)">
+                                                {{ $missingCount }} missing
+                                            </span>
+                                        @endif
                                     </div>
                                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ $member->email }}</p>
                                 </div>
@@ -412,6 +424,12 @@
                                                         </svg>
                                                         {{ $guest->tasks_count }} {{ $guest->tasks_count === 1 ? 'task' : 'tasks' }}
                                                     </span>
+                                                    @php $missingCount = ($missingMainTasksByUserId ?? [])[$guest->id] ?? 0; @endphp
+                                                    @if($missingCount > 0)
+                                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200" title="Main tasks not yet Done/Closed (expected one per day)">
+                                                            {{ $missingCount }} missing
+                                                        </span>
+                                                    @endif
                                                 </div>
                                                 <p class="text-xs text-gray-500 dark:text-gray-400">{{ $guest->email }}</p>
                                             </div>
@@ -499,6 +517,12 @@
                                                     </svg>
                                                     {{ $guest->tasks_count }} {{ $guest->tasks_count === 1 ? 'task' : 'tasks' }}
                                                 </span>
+                                                @php $missingCount = ($missingMainTasksByUserId ?? [])[$guest->id] ?? 0; @endphp
+                                                @if($missingCount > 0)
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200" title="Main tasks not yet Done/Closed (expected one per day)">
+                                                        {{ $missingCount }} missing
+                                                    </span>
+                                                @endif
                                             </div>
                                             <p class="text-xs text-gray-500 dark:text-gray-400">{{ $guest->email }}</p>
                                         </div>

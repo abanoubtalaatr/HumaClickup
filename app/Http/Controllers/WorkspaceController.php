@@ -9,6 +9,7 @@ use App\Models\Workspace;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Models\WorkspaceUser;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 
@@ -240,7 +241,27 @@ class WorkspaceController extends Controller
         // Check if admin
         $isAdmin = $user->isAdminInWorkspace($workspace->id);
 
-        return view('workspaces.members', compact('workspace', 'members', 'roles', 'tracks', 'canInviteExisting', 'isAdmin', 'allGuests', 'allMembers', 'filter'));
+        // Missing main tasks per user: main tasks (in workspace projects) assigned to them that are not Done/Closed
+        $missingMainTasksByUserId = [];
+        $workspaceProjectIds = $workspace->projects()->pluck('id');
+        if ($workspaceProjectIds->isNotEmpty()) {
+            $incompleteMainTaskIds = Task::withoutGlobalScope('workspace')
+                ->where('workspace_id', $workspace->id)
+                ->whereIn('project_id', $workspaceProjectIds)
+                ->where('is_main_task', 'yes')
+                ->whereHas('status', fn($q) => $q->where('type', '!=', 'done'))
+                ->pluck('id');
+            if ($incompleteMainTaskIds->isNotEmpty()) {
+                $counts = DB::table('task_assignees')
+                    ->whereIn('task_id', $incompleteMainTaskIds)
+                    ->selectRaw('user_id, count(*) as cnt')
+                    ->groupBy('user_id')
+                    ->pluck('cnt', 'user_id');
+                $missingMainTasksByUserId = $counts->all();
+            }
+        }
+
+        return view('workspaces.members', compact('workspace', 'members', 'roles', 'tracks', 'canInviteExisting', 'isAdmin', 'allGuests', 'allMembers', 'filter', 'missingMainTasksByUserId'));
     }
 
     /**
