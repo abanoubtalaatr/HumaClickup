@@ -20,41 +20,24 @@
     </div>
 
     @php
-        // Calculate 20-day program progress: increases when tasks are in Done or Closed status
+        // 20-day program: progress = completed main tasks / 20. Hours = tasks × 6 (e.g. 3 tasks = 18/120h)
         $user = auth()->user();
         $workspaceId = session('current_workspace_id');
-        
         $guestProjects = \App\Models\Project::where('workspace_id', $workspaceId)
             ->whereHas('projectMembers', function ($q) use ($user) {
                 $q->where('user_id', $user->id)->where('role', 'guest');
             })
             ->get();
-        
-        $programStartDate = $guestProjects->min('start_date') 
-            ? \Carbon\Carbon::parse($guestProjects->min('start_date'))
-            : now()->subDays(20);
-        
-        $programEndDate = $programStartDate->copy()->addWeeks(4);
-        
-        $allProgress = \App\Models\DailyProgress::where('user_id', $user->id)
-            ->whereBetween('date', [$programStartDate, $programEndDate])
-            ->get();
-        
-        $totalCompletedHours = (float) $allProgress->sum('completed_hours');
-        $targetHours = 120; // 20 tasks × 6 hours
         $totalProgramTasks = 20;
-        
-        // Count main tasks in Done or Closed (both have status type 'done') assigned to this guest
+        $hoursPerTask = 6;
+        $targetHours = $totalProgramTasks * $hoursPerTask; // 120
         $completedMainTasks = \App\Models\Task::whereIn('project_id', $guestProjects->pluck('id'))
             ->where('is_main_task', 'yes')
             ->whereHas('assignees', fn($q) => $q->where('user_id', $user->id))
             ->whereHas('status', fn($q) => $q->where('type', 'done'))
             ->count();
-        
-        // Progress %: use the higher of hours-based or task-based so moving to Done/Closed increases progress
-        $hoursPercentage = $targetHours > 0 ? min(($totalCompletedHours / $targetHours) * 100, 100) : 0;
-        $tasksPercentage = $totalProgramTasks > 0 ? min(($completedMainTasks / $totalProgramTasks) * 100, 100) : 0;
-        $programProgressPercentage = max($hoursPercentage, $tasksPercentage);
+        $programProgressPercentage = $totalProgramTasks > 0 ? min(($completedMainTasks / $totalProgramTasks) * 100, 100) : 0;
+        $totalCompletedHours = $completedMainTasks * $hoursPerTask; // 3 tasks = 18h
     @endphp
 
     <!-- 20-Day Program Progress Card -->
@@ -104,7 +87,7 @@
             <div class="rounded-xl p-6 shadow-xl border-2 border-opacity-40" style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(37, 99, 235, 0.3)); border-color: rgba(255,255,255,0.3);">
                 <p class="text-blue-100 text-sm font-bold mb-2 uppercase tracking-wide">Total Hours</p>
                 <div class="flex items-baseline space-x-2">
-                    <p class="text-5xl font-black text-white drop-shadow-lg">{{ number_format($totalCompletedHours, 1) }}</p>
+                    <p class="text-5xl font-black text-white drop-shadow-lg">{{ (int) $totalCompletedHours }}</p>
                     <p class="text-2xl font-bold text-blue-200">/ {{ $targetHours }}h</p>
                 </div>
             </div>
@@ -119,7 +102,7 @@
             <div class="rounded-xl p-6 shadow-xl border-2 border-opacity-40" style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(124, 58, 237, 0.3)); border-color: rgba(255,255,255,0.3);">
                 <p class="text-purple-100 text-sm font-bold mb-2 uppercase tracking-wide">Remaining</p>
                 <div class="flex items-baseline space-x-2">
-                    <p class="text-5xl font-black text-white drop-shadow-lg">{{ number_format(max($targetHours - $totalCompletedHours, 0), 1) }}</p>
+                    <p class="text-5xl font-black text-white drop-shadow-lg">{{ number_format(max($targetHours - $totalCompletedHours, 0), 0) }}</p>
                     <p class="text-2xl font-bold text-purple-200">hours</p>
                 </div>
             </div>

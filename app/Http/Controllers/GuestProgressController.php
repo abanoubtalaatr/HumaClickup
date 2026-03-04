@@ -69,23 +69,28 @@ class GuestProgressController extends Controller
             ];
         }
 
-        // Get weekly summary across all projects
+        // Weekly summary: from main tasks completed this week only (count × 6h), target 30h
         $weekStart = $date->copy()->startOfWeek();
         $weekEnd = $weekStart->copy()->endOfWeek();
-
-        $allProgress = \App\Models\DailyProgress::where('user_id', $user->id)
-            ->whereBetween('date', [$weekStart, $weekEnd])
-            ->get();
-
-        $weeklyHours = $allProgress->sum('completed_hours');
-        $weeklyAvgProgress = $allProgress->avg('progress_percentage') ?? 0;
-        $meetsWeeklyTarget = $weeklyHours >= 30;
+        $projectIds = $projects->pluck('id');
+        $weeklyCompletedMainTasks = \App\Models\Task::whereIn('project_id', $projectIds)
+            ->where('is_main_task', 'yes')
+            ->whereHas('assignees', fn($q) => $q->where('user_id', $user->id))
+            ->whereHas('status', fn($q) => $q->where('type', 'done'))
+            ->whereNotNull('completion_date')
+            ->whereBetween('completion_date', [$weekStart, $weekEnd])
+            ->count();
+        $hoursPerTask = 6;
+        $weeklyTargetHours = 30;
+        $weeklyHours = $weeklyCompletedMainTasks * $hoursPerTask;
+        $weeklyProgressPct = $weeklyTargetHours > 0 ? min(($weeklyHours / $weeklyTargetHours) * 100, 100) : 0;
+        $meetsWeeklyTarget = $weeklyHours >= $weeklyTargetHours;
 
         $weeklySummary = [
-            'total_hours' => round($weeklyHours, 2),
-            'average_progress' => round($weeklyAvgProgress, 1),
+            'total_hours' => (int) $weeklyHours,
+            'average_progress' => round($weeklyProgressPct, 1),
             'meets_target' => $meetsWeeklyTarget,
-            'target_hours' => 30,
+            'target_hours' => $weeklyTargetHours,
         ];
 
         $totalAbsenceDays = $this->absenceTrackingService->getTotalAbsenceDaysForGuest($workspaceId, $user->id);
