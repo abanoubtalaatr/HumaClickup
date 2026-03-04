@@ -141,18 +141,19 @@ class DailyProgressService
     }
 
     /**
-     * Check if a task is complete and was completed on time (before 11 PM).
-     * 
-     * Rule: Task must be marked as done before 11:00 PM of the task date
-     * to count toward daily progress.
-     * 
+     * Check if a task is complete (status done or closed) and completed on the task date.
+     *
+     * Progress increases when a task is in "Done" or "Closed" status (both use type 'done').
+     * Task counts if completed anytime on the task date (end of day), so progress reflects
+     * completed tasks correctly (e.g. 20 tasks × 6h = 120h total).
+     *
      * @param Task $task
      * @param Carbon $taskDate
      * @return bool
      */
     public function isTaskComplete(Task $task, Carbon $taskDate = null): bool
     {
-        // Check if task status is done
+        // Check if task status is done (covers both "Done" and "Closed" statuses)
         if (!$task->status || $task->status->type !== 'done') {
             return false;
         }
@@ -162,11 +163,14 @@ class DailyProgressService
             return true;
         }
 
-        // Check if task was completed before 11 PM on the task date
+        // Count if completed on the task date (Done/Closed anytime that day)
         $completionTime = $task->completion_date ?? $task->updated_at;
-        $deadline = $taskDate->copy()->setTime(23, 0, 0); // 11:00 PM
+        if (!$completionTime) {
+            return false;
+        }
+        $completion = $completionTime instanceof \Carbon\Carbon ? $completionTime : \Carbon\Carbon::parse($completionTime);
 
-        return $completionTime <= $deadline;
+        return $completion->isSameDay($taskDate);
     }
 
     /**

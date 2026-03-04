@@ -179,19 +179,27 @@ class Project extends Model
 
     protected function calculateProgressByStatus(): void
     {
-        $totalTasks = $this->tasks()->count();
+        // When project has required main tasks (e.g. 20-day program), base progress on main tasks only
+        $taskQuery = $this->tasks();
+        if ($this->required_main_tasks_count > 0) {
+            $taskQuery = $taskQuery->where('is_main_task', 'yes');
+        }
+        $totalTasks = $taskQuery->count();
         if ($totalTasks == 0) {
             $this->progress = 0;
             $this->save();
             return;
         }
 
-        $weightedSum = $this->tasks()
+        $weightedQuery = $this->tasks()
             ->join('custom_statuses', function ($join) {
                 $join->on('tasks.status_id', '=', 'custom_statuses.id')
                     ->where('custom_statuses.project_id', '=', $this->getKey());
-            })
-            ->sum('custom_statuses.progress_contribution');
+            });
+        if ($this->required_main_tasks_count > 0) {
+            $weightedQuery = $weightedQuery->where('tasks.is_main_task', 'yes');
+        }
+        $weightedSum = $weightedQuery->sum('custom_statuses.progress_contribution');
 
         // Average contribution per task (each status 0-100), clamped to 0-100
         $this->progress = min(100, max(0, $weightedSum / $totalTasks));
@@ -200,15 +208,23 @@ class Project extends Model
 
     protected function calculateProgressByCount(): void
     {
-        $total = $this->tasks()->count();
+        // When project has required main tasks (e.g. 20 tasks × 6h), progress = done main tasks / total main tasks
+        $taskQuery = $this->tasks();
+        if ($this->required_main_tasks_count > 0) {
+            $taskQuery = $taskQuery->where('is_main_task', 'yes');
+        }
+        $total = $taskQuery->count();
         if ($total == 0) {
             $this->progress = 0;
+            $this->save();
             return;
         }
 
-        $done = $this->tasks()
-            ->whereHas('status', fn($q) => $q->where('type', 'done'))
-            ->count();
+        $doneQuery = $this->tasks()->whereHas('status', fn($q) => $q->where('type', 'done'));
+        if ($this->required_main_tasks_count > 0) {
+            $doneQuery = $doneQuery->where('is_main_task', 'yes');
+        }
+        $done = $doneQuery->count();
 
         $this->progress = min(100, max(0, ($done / $total) * 100));
         $this->save();

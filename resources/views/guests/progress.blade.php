@@ -20,7 +20,7 @@
     </div>
 
     @php
-        // Calculate 20-day program progress (same as navbar)
+        // Calculate 20-day program progress: increases when tasks are in Done or Closed status
         $user = auth()->user();
         $workspaceId = session('current_workspace_id');
         
@@ -41,8 +41,20 @@
             ->get();
         
         $totalCompletedHours = (float) $allProgress->sum('completed_hours');
-        $targetHours = 120;
-        $programProgressPercentage = $targetHours > 0 ? min(($totalCompletedHours / $targetHours) * 100, 100) : 0;
+        $targetHours = 120; // 20 tasks × 6 hours
+        $totalProgramTasks = 20;
+        
+        // Count main tasks in Done or Closed (both have status type 'done') assigned to this guest
+        $completedMainTasks = \App\Models\Task::whereIn('project_id', $guestProjects->pluck('id'))
+            ->where('is_main_task', 'yes')
+            ->whereHas('assignees', fn($q) => $q->where('user_id', $user->id))
+            ->whereHas('status', fn($q) => $q->where('type', 'done'))
+            ->count();
+        
+        // Progress %: use the higher of hours-based or task-based so moving to Done/Closed increases progress
+        $hoursPercentage = $targetHours > 0 ? min(($totalCompletedHours / $targetHours) * 100, 100) : 0;
+        $tasksPercentage = $totalProgramTasks > 0 ? min(($completedMainTasks / $totalProgramTasks) * 100, 100) : 0;
+        $programProgressPercentage = max($hoursPercentage, $tasksPercentage);
     @endphp
 
     <!-- 20-Day Program Progress Card -->
@@ -87,14 +99,22 @@
             </div>
         </div>
         
-        <!-- Stats - Only 2 columns now -->
-        <div class="grid grid-cols-2 gap-6">
+        <!-- Stats: Hours, Tasks, Remaining -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div class="rounded-xl p-6 shadow-xl border-2 border-opacity-40" style="background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(37, 99, 235, 0.3)); border-color: rgba(255,255,255,0.3);">
                 <p class="text-blue-100 text-sm font-bold mb-2 uppercase tracking-wide">Total Hours</p>
                 <div class="flex items-baseline space-x-2">
                     <p class="text-5xl font-black text-white drop-shadow-lg">{{ number_format($totalCompletedHours, 1) }}</p>
                     <p class="text-2xl font-bold text-blue-200">/ {{ $targetHours }}h</p>
                 </div>
+            </div>
+            <div class="rounded-xl p-6 shadow-xl border-2 border-opacity-40" style="background: linear-gradient(135deg, rgba(34, 197, 94, 0.3), rgba(22, 163, 74, 0.3)); border-color: rgba(255,255,255,0.3);">
+                <p class="text-green-100 text-sm font-bold mb-2 uppercase tracking-wide">Tasks Done / Closed</p>
+                <div class="flex items-baseline space-x-2">
+                    <p class="text-5xl font-black text-white drop-shadow-lg">{{ $completedMainTasks }}</p>
+                    <p class="text-2xl font-bold text-green-200">/ {{ $totalProgramTasks }} tasks</p>
+                </div>
+                <p class="text-white/80 text-xs mt-1">Progress increases when tasks are in Done or Closed</p>
             </div>
             <div class="rounded-xl p-6 shadow-xl border-2 border-opacity-40" style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(124, 58, 237, 0.3)); border-color: rgba(255,255,255,0.3);">
                 <p class="text-purple-100 text-sm font-bold mb-2 uppercase tracking-wide">Remaining</p>

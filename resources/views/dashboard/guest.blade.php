@@ -106,33 +106,35 @@
         </div>
 
         @php
-            // Calculate 20-day program progress (same as navbar)
+            // 20-day program progress: increases when tasks are in Done or Closed (20 tasks × 6h = 120h)
             $user = auth()->user();
             $workspaceId = session('current_workspace_id');
-            
             $guestProjects = \App\Models\Project::where('workspace_id', $workspaceId)
                 ->whereHas('projectMembers', function ($q) use ($user) {
                     $q->where('user_id', $user->id)->where('role', 'guest');
                 })
                 ->get();
-            
-            $programStartDate = $guestProjects->min('start_date') 
+            $programStartDate = $guestProjects->min('start_date')
                 ? \Carbon\Carbon::parse($guestProjects->min('start_date'))
                 : now()->subDays(20);
-            
             $programEndDate = $programStartDate->copy()->addWeeks(4);
-            
             $allProgressData = \App\Models\DailyProgress::where('user_id', $user->id)
                 ->whereBetween('date', [$programStartDate, $programEndDate])
                 ->get();
-            
             $totalCompletedHours = (float) $allProgressData->sum('completed_hours');
             $targetHours = 120;
-            $programProgressPercentage = $targetHours > 0 ? min(($totalCompletedHours / $targetHours) * 100, 100) : 0;
-            
-            $statusText = $programProgressPercentage >= 100 ? '🎉 Completed!' : 
-                          ($programProgressPercentage >= 75 ? '🚀 Almost There' : 
-                          ($programProgressPercentage >= 50 ? '💪 Great Progress' : 
+            $totalProgramTasks = 20;
+            $completedMainTasks = \App\Models\Task::whereIn('project_id', $guestProjects->pluck('id'))
+                ->where('is_main_task', 'yes')
+                ->whereHas('assignees', fn($q) => $q->where('user_id', $user->id))
+                ->whereHas('status', fn($q) => $q->where('type', 'done'))
+                ->count();
+            $hoursPct = $targetHours > 0 ? min(($totalCompletedHours / $targetHours) * 100, 100) : 0;
+            $tasksPct = $totalProgramTasks > 0 ? min(($completedMainTasks / $totalProgramTasks) * 100, 100) : 0;
+            $programProgressPercentage = max($hoursPct, $tasksPct);
+            $statusText = $programProgressPercentage >= 100 ? '🎉 Completed!' :
+                          ($programProgressPercentage >= 75 ? '🚀 Almost There' :
+                          ($programProgressPercentage >= 50 ? '💪 Great Progress' :
                           ($programProgressPercentage >= 25 ? '⚡ Keep Going' : '🌱 Getting Started')));
         @endphp
 
