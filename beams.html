@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pusher Beams – Push Notifications</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 32rem; margin: 2rem auto; padding: 0 1rem; }
+    h1 { font-size: 1.25rem; }
+    p { color: #444; }
+    button { padding: 0.5rem 1rem; font-size: 1rem; cursor: pointer; }
+    #status { margin-top: 1rem; padding: 0.75rem; border-radius: 6px; min-height: 2rem; }
+    #status.info { background: #e7f3ff; color: #004; }
+    #status.success { background: #e6f7e6; color: #030; }
+    #status.error { background: #ffe6e6; color: #600; }
+  </style>
+</head>
+<body>
+  <h1>Pusher Beams</h1>
+  <p>Enable push notifications to subscribe to the <code>hello</code> interest. This page must be served over HTTPS or localhost.</p>
+  <button type="button" id="enableBtn">Enable notifications</button>
+  <div id="status" class="info" role="status" aria-live="polite">Click the button to enable notifications.</div>
+
+  <script src="https://js.pusher.com/beams/2.1.0/push-notifications-cdn.js"></script>
+  <script>
+    (function () {
+      var instanceId = 'e0496eb2-ef83-4764-a87e-d4e60f85019e';
+      var interest = 'hello';
+
+      var statusEl = document.getElementById('status');
+      var btn = document.getElementById('enableBtn');
+
+      function setStatus(message, type) {
+        type = type || 'info';
+        statusEl.textContent = message;
+        statusEl.className = type;
+      }
+
+      function enableNotifications() {
+        if (typeof PusherPushNotifications === 'undefined') {
+          setStatus('Pusher Beams script failed to load.', 'error');
+          return;
+        }
+
+        var beamsClient = new PusherPushNotifications.Client({ instanceId: instanceId });
+        setStatus('Requesting permission and registering…', 'info');
+        btn.disabled = true;
+
+        beamsClient.start()
+          .then(function () { return beamsClient.addDeviceInterest(interest); })
+          .then(function () {
+            setStatus('Successfully registered and subscribed to interest: ' + interest, 'success');
+          })
+          .catch(function (err) {
+            setStatus('Error: ' + (err && err.message ? err.message : String(err)), 'error');
+            btn.disabled = false;
+          });
+      }
+
+      btn.addEventListener('click', enableNotifications);
+    })();
+  </script>
+</body>
+</html>

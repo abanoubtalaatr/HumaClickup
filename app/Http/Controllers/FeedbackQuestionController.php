@@ -4,18 +4,86 @@ namespace App\Http\Controllers;
 
 use App\Models\FeedbackQuestion;
 use App\Models\FeedbackQuestionOption;
+use App\Models\GuestFeedbackSubmission;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class FeedbackQuestionController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $workspaceId = session('current_workspace_id');
-        if (!$workspaceId || !auth()->user()->isAdminInWorkspace($workspaceId)) {
+        $user = auth()->user();
+        if (!$workspaceId) {
             abort(403);
         }
+        $isAdmin = $user->isAdminInWorkspace($workspaceId);
         $questions = FeedbackQuestion::where('workspace_id', $workspaceId)->ordered()->with('options')->get();
-        return view('feedback-questions.index', compact('questions'));
+
+        // Members (non-admin) can only view their own feedback results; admin can view all
+        $membersWithFeedback = collect();
+        $feedbackResults = null;
+        $selectedMember = null;
+
+        if ($isAdmin) {
+            $mentorIds = GuestFeedbackSubmission::where('workspace_id', $workspaceId)->distinct()->pluck('mentor_id');
+            $membersWithFeedback = User::whereIn('id', $mentorIds)->orderBy('name')->get(['id', 'name', 'email']);
+            $memberId = $request->integer('member_id', 0);
+            if ($memberId && $membersWithFeedback->contains('id', $memberId)) {
+                $selectedMember = User::find($memberId);
+                $feedbackResults = $this->getFeedbackResultsForMentor($workspaceId, $memberId);
+            }
+        } else {
+            // Member: show my feedback (I am the mentor)
+            $feedbackResults = $this->getFeedbackResultsForMentor($workspaceId, $user->id);
+            $selectedMember = $user;
+        }
+
+        return view('feedback-questions.index', compact('questions', 'isAdmin', 'membersWithFeedback', 'feedbackResults', 'selectedMember'));
+    }
+
+    /**
+     * Aggregate feedback submissions for a mentor (member) into per-question stats.
+     */
+    protected function getFeedbackResultsForMentor(int $workspaceId, int $mentorId): array
+    {
+        $submissions = GuestFeedbackSubmission::where('workspace_id', $workspaceId)
+            ->where('mentor_id', $mentorId)
+            ->with(['answers.question', 'answers.option', 'guest'])
+            ->orderByDesc('submitted_at')
+            ->get();
+
+        $questions = FeedbackQuestion::where('workspace_id', $workspaceId)->ordered()->with('options')->get();
+        $byQuestion = [];
+        foreach ($questions as $q) {
+            $answersForQ = $submissions->pluck('answers')->flatten()->where('feedback_question_id', $q->id);
+            $count = $answersForQ->count();
+            if ($q->type === 'rating') {
+                $vals = $answersForQ->pluck('rating_value')->filter(fn($v) => $v !== null);
+                $byQuestion[$q->id] = [
+                    'question' => $q,
+                    'type' => 'rating',
+                    'count' => $count,
+                    'average' => $vals->isEmpty() ? null : round($vals->avg(), 2),
+                    'min' => $vals->isEmpty() ? null : $vals->min(),
+                    'max' => $vals->isEmpty() ? null : $vals->max(),
+                ];
+            } else {
+                $optionCounts = $answersForQ->pluck('feedback_question_option_id')->filter()->countBy();
+                $byQuestion[$q->id] = [
+                    'question' => $q,
+                    'type' => 'multiple_choice',
+                    'count' => $count,
+                    'option_counts' => $optionCounts->all(),
+                ];
+            }
+        }
+
+        return [
+            'submissions' => $submissions,
+            'total_submissions' => $submissions->count(),
+            'by_question' => $byQuestion,
+        ];
     }
 
     public function create()

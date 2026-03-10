@@ -70,8 +70,8 @@
                                     @if($isMember || $isAdminOrOwner)
                                     <a href="{{ route('kpi.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">KPI</a>
                                     @endif
-                                    @if($isAdminOrOwner)
-                                    <a href="{{ route('feedback-questions.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Feedback Questions</a>
+                                    @if($isMember || $isAdminOrOwner)
+                                    <a href="{{ route('feedback-questions.index') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{{ $isAdminOrOwner ? 'Feedback Questions' : 'My Feedback' }}</a>
                                     @endif
                                 </div>
                             </div>
